@@ -19,6 +19,30 @@ rules_version = '2';
 //   - createdAt: timestamp|string|number (optional, immutable on update)
 //   - updatedAt: timestamp|string|number (optional)
 //
+// Collection: families
+// Document ID: {familyId} (the 6 tribes / family groups of the stay)
+// Fields:
+//   - name: string (optional, <= 300 chars) - Family / tribe display name
+//   - city: string (optional, <= 200 chars) - Origin city / region
+//   - adults: list|string|number (optional) - Adult members in the tribe
+//   - kids: list|string|number (optional) - Children in the tribe (with ages)
+//   - arrivalTime: string (optional, <= 200 chars) - Expected arrival slot
+//   - departureTime: string (optional, <= 200 chars) - Expected departure slot
+//   - transport: string (optional, <= 300 chars) - Transport / carpool details
+//   - specialty: string (optional, <= 500 chars) - Regional specialty brought
+//   - notes: string (optional, <= 2000 chars) - Logistics / baby bed / dietary notes
+//   - updatedAt: timestamp|string|number (optional)
+//
+// Collection: polls
+// Document ID: {pollId} (WhatsApp discussions & group decisions / votes)
+// Fields:
+//   - title / question: string (optional, <= 500 chars) - Poll topic or question
+//   - category: string (optional, <= 200 chars) - Topic category
+//   - options: list|map (optional) - Poll options and votes
+//   - notes: string (optional, <= 2000 chars) - Context or summary
+//   - createdBy: string (optional, <= 200 chars) - Author name
+//   - createdAt / updatedAt: timestamp|string|number (optional)
+//
 // Collection: settings
 // Document ID: {docId} (e.g. 'global' or 'links')
 // Fields:
@@ -95,6 +119,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Alias for authentication check
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
     // Check if user owns the resource (for user-owned documents)
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
@@ -165,6 +194,26 @@ service cloud.firestore {
         isValidOptionalString('familyGroup', 0, 200) &&
         isValidOptionalString('arrivalTime', 0, 100) &&
         isValidOptionalString('transport', 0, 200);
+    }
+
+    function isValidFamily(data) {
+      return hasBoundedKeys(30) &&
+        isValidOptionalString('name', 0, 300) &&
+        isValidOptionalString('city', 0, 200) &&
+        isValidOptionalString('arrivalTime', 0, 200) &&
+        isValidOptionalString('departureTime', 0, 200) &&
+        isValidOptionalString('transport', 0, 300) &&
+        isValidOptionalString('specialty', 0, 500) &&
+        isValidOptionalString('notes', 0, 2000);
+    }
+
+    function isValidPoll(data) {
+      return hasBoundedKeys(30) &&
+        isValidOptionalString('title', 0, 500) &&
+        isValidOptionalString('question', 0, 500) &&
+        isValidOptionalString('category', 0, 200) &&
+        isValidOptionalString('notes', 0, 2000) &&
+        isValidOptionalString('createdBy', 0, 200);
     }
 
     function isValidSettings(data) {
@@ -242,6 +291,22 @@ service cloud.firestore {
         uidNotModified() &&
         areImmutableFieldsUnchanged(['createdAt']);
       allow delete: if isOwner(userId);
+    }
+
+    // Families / Tribes: Collaborative logistics, composition & arrival/departure tracking
+    match /families/{familyId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() &&
+        isValidFamily(request.resource.data);
+      allow delete: if isSignedIn();
+    }
+
+    // Polls / WhatsApp discussions & votes
+    match /polls/{pollId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() &&
+        isValidPoll(request.resource.data);
+      allow delete: if isSignedIn();
     }
 
     // Shared app links & configuration (WhatsApp, Google Photos, Tricount, Playlist)
