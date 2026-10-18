@@ -164,6 +164,15 @@ export const GITE_INFO = {
         { name: "Najac & Belcastel", dist: "30 min", desc: "Deux des Plus Beaux Villages de France avec leurs châteaux forts." },
         { name: "Conques, Cordes-sur-Ciel, Saint-Cirq-Lapopie", dist: "45 à 60 min", desc: "Excursions mythiques à la journée (chemin de halage de Bouziès, abbatiale de Conques)." }
       ]
+    },
+    {
+      category: "🍷 Grands Vins, Vignobles & Pépites autour du Château",
+      places: [
+        { name: "AOP Marcillac : Domaine Matha, Domaine du Cros & Domaine Laurens", dist: "35–40 min", desc: "Vignoble héroïque en terrasses de terres rouges (« rougiers »), 100% Mansois (Fer Servadou). Matha (star bio/biodynamie à Bruéjouls), Du Cros (Goutrens, cuvée Lo Sang del Païs) et Laurens (Clairvaux)." },
+        { name: "AOP Gaillac & Cordes : Domaine Plageoles & Causse Marines", dist: "45–50 min", desc: "Deux légendes absolues servies sur les tables étoilées ! Plageoles (Cahuzac-sur-Vère, cépages oubliés Prunelart, Duras, Mauzac Nature, Vin de Voile) et Causse Marines (Vieux, grands vins bio/nature sur causse calcaire)." },
+        { name: "AOP Cahors & Causse du Lot : Mas del Périé (Fabien Jouves) & Château du Cèdre", dist: "45–55 min", desc: "Fabien Jouves (Mas del Périé à Trespoux-Rassiels, superstar des Malbecs parcellaires en biodynamie & amphores) et les grands crus historiques du Château du Cèdre et Clos Triguedina." },
+        { name: "Caviste « Santé Bonheur » & Micro-AOP Entraygues-Le-Fel / Estaing", dist: "10 min (Villeneuve)", desc: "Cave indépendante pointue dans la bastide de Villeneuve-d'Aveyron : sélection directe des pépites de Marcillac, Gaillac, Cahors et des rarissimes vins de schiste d'Entraygues-Le-Fel et d'Estaing." }
+      ]
     }
   ]
 };
@@ -769,16 +778,44 @@ export const INITIAL_ACTIVITIES = [
   },
   {
     id: "act-19-vins-marcillac-chais",
-    title: "Dégustation au Chaud dans les Chais du Vallon de Marcillac",
+    title: "Grands Vins AOP Marcillac : Domaine Matha, Domaine du Cros & Laurens",
     category: "Terroir & Gastronomie",
-    day: "À 40 min (Clairvaux-d'Aveyron)",
-    duration: "2h",
-    description: "Route panoramique à travers les terres rouges (« rougiers ») et les vignes en terrasses. Visite des chais voûtés et dégustation des vins rouges AOP Marcillac (Domaine Laurens / Domaine du Cros) + jus de raisin artisanal pour les enfants.",
+    day: "À 35–40 min (Vallon de Marcillac)",
+    duration: "2h à 2h30",
+    description: "Route spectaculaire à travers les vignes en terrasses de terres rouges (« rougiers »), 100% Mansois (Fer Servadou). Dégustation chez les références absolues : Domaine Matha (star bio/biodynamie à Bruéjouls), Domaine du Cros (Lo Sang del Païs à Goutrens) et Domaine Laurens à Clairvaux-d'Aveyron.",
     imageUrl: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1000&q=80",
-    websiteUrl: "https://www.domaine-laurens.com/",
-    websiteLabel: "Site Domaine Laurens (Marcillac)",
+    websiteUrl: "https://www.domaine-du-cros.com/",
+    websiteLabel: "Site Domaine du Cros (Marcillac)",
     proposedBy: "Baptiste",
-    votesHot: [],
+    votesHot: ["Baptiste"],
+    votesCold: []
+  },
+  {
+    id: "act-19b-plageoles-causse-marines",
+    title: "Légendes du Vin & Pépites Bio : Domaine Plageoles & Causse Marines (Gaillac / Cordes)",
+    category: "Terroir & Gastronomie",
+    day: "À 45 min (Cahuzac-sur-Vère / Cordes)",
+    duration: "Demi-journée (combinable avec Cordes-sur-Ciel)",
+    description: "Deux domaines mythiques présents sur les plus grandes tables étoilées ! Chez Plageoles (7 générations depuis 1805) : cépages autochtones ressuscités (Prunelart, Braucol, Duras, Ondenc, Mauzac Nature effervescent, Vin de Voile). À 10 min, la pépite nature & biodynamie Causse Marines (Patrice Lescarret).",
+    imageUrl: "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.vins-plageoles.com/",
+    websiteLabel: "Site Domaine Plageoles",
+    proposedBy: "Baptiste",
+    votesHot: ["Baptiste"],
+    votesCold: []
+  },
+  {
+    id: "act-19c-cahors-fabien-jouves",
+    title: "Pépites Biodynamie & Grands Malbecs : Mas del Périé (Fabien Jouves) & Château du Cèdre",
+    category: "Terroir & Gastronomie",
+    day: "À 50 min (Causse de Cahors)",
+    duration: "Demi-journée",
+    description: "Sur les plus hauts coteaux calcaires du Causse (350m d'altitude) : dégustation des cuvées parcellaires élevées en amphores et foudres de Fabien Jouves (Mas del Périé, superstar du vin vivant dans le Sud-Ouest) et des grands crus historiques de Cahors (Château du Cèdre, Clos Triguedina).",
+    imageUrl: "https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.masdelperie.com/",
+    websiteLabel: "Site Mas del Périé (Fabien Jouves)",
+    proposedBy: "Baptiste",
+    votesHot: ["Baptiste"],
     votesCold: []
   },
   {
