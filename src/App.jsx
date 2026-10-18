@@ -165,6 +165,7 @@ export default function App() {
   const [newActDay, setNewActDay] = useState("En semaine");
   const [newActDesc, setNewActDesc] = useState("");
   const [newActImg, setNewActImg] = useState("");
+  const [newActWebsiteUrl, setNewActWebsiteUrl] = useState("");
 
   const [newOccupantByRoom, setNewOccupantByRoom] = useState({});
   const [myArrivalTime, setMyArrivalTime] = useState("");
@@ -401,7 +402,7 @@ export default function App() {
       (err) => console.warn("Groceries listener warning:", err.message)
     );
 
-    // 7. Activities (Auto-seed the 22 illustrated activities & remove legacy unillustrated act-1..act-6)
+    // 7. Activities (Auto-seed the 26 illustrated activities & merge websiteUrl/imageUrl)
     const unsubActivities = onSnapshot(
       collection(db, "activities"),
       async (snap) => {
@@ -416,6 +417,8 @@ export default function App() {
               duration: a.duration,
               description: a.description,
               imageUrl: a.imageUrl,
+              websiteUrl: a.websiteUrl || "",
+              websiteLabel: a.websiteLabel || "Voir le site officiel",
               proposedBy: a.proposedBy,
               votes: a.votesHot || [],
               votesHot: a.votesHot || [],
@@ -431,10 +434,12 @@ export default function App() {
           }
         }
         if (!snap.empty) {
+          const initialById = Object.fromEntries(INITIAL_ACTIVITIES.map((a) => [a.id, a]));
           const loaded = snap.docs
             .filter((d) => !["act-1", "act-2", "act-3", "act-4", "act-5", "act-6"].includes(d.id))
             .map((d) => {
               const data = d.data();
+              const preset = initialById[d.id] || {};
               const votesHot = Array.isArray(data.votesHot)
                 ? data.votesHot
                 : Array.isArray(data.votes)
@@ -443,7 +448,11 @@ export default function App() {
               const votesCold = Array.isArray(data.votesCold) ? data.votesCold : [];
               return {
                 id: d.id,
+                ...preset,
                 ...data,
+                imageUrl: data.imageUrl || preset.imageUrl || "",
+                websiteUrl: data.websiteUrl || preset.websiteUrl || "",
+                websiteLabel: data.websiteLabel || preset.websiteLabel || "Voir le site / Infos",
                 votesHot,
                 votesCold
               };
@@ -981,6 +990,8 @@ export default function App() {
       duration: "Libre",
       description: newActDesc.trim() || "Proposé pour le groupe !",
       imageUrl: newActImg.trim() || fallbackImg,
+      websiteUrl: newActWebsiteUrl.trim() || "",
+      websiteLabel: "Voir le site / Infos",
       proposedBy: userDisplayName,
       votes: [userDisplayName],
       votesHot: [userDisplayName],
@@ -990,6 +1001,7 @@ export default function App() {
     setNewActTitle("");
     setNewActDesc("");
     setNewActImg("");
+    setNewActWebsiteUrl("");
   };
 
   const voteActivityHot = async (act) => {
@@ -1029,6 +1041,8 @@ export default function App() {
           duration: a.duration,
           description: a.description,
           imageUrl: a.imageUrl,
+          websiteUrl: a.websiteUrl || "",
+          websiteLabel: a.websiteLabel || "Voir le site / Infos",
           proposedBy: a.proposedBy
         },
         { merge: true }
@@ -2134,7 +2148,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ==================== TAB 3: 22 ACTIVITÉS ILLUSTRÉES (CHAUD 🔥 / PAS CHAUD ❄️) ==================== */}
+      {/* ==================== TAB 3: 26 ACTIVITÉS ILLUSTRÉES (CHAUD 🔥 / PAS CHAUD ❄️) ==================== */}
       {activeTab === "activities" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div className="card card-gold">
@@ -2144,8 +2158,8 @@ export default function App() {
                   🔥 Activités autour de Maleville : Chaud ou Pas Chaud ?
                 </h2>
                 <p style={{ fontSize: "0.86rem", color: "#cbd5e1" }}>
-                  Cheval, poney, tir à l'arc, randos dans les gorges, cités médiévales, grottes, aligot géant, piscine 26°C & spa : clique sur{" "}
-                  <strong>« 🔥 Chaud »</strong> ou <strong>« ❄️ Pas chaud »</strong> sur chaque carte !
+                  Spéléo à 13°C, VTT / VTT électrique, Via Ferrata & tyrolienne, trail, cheval/poney, tir à l'arc, randos, cités médiévales, grottes, aligot géant, piscine 26°C & spa : consulte le site de chaque activité et vote{" "}
+                  <strong>« 🔥 Chaud »</strong> ou <strong>« ❄️ Pas chaud »</strong> !
                 </p>
               </div>
               <button
@@ -2153,9 +2167,9 @@ export default function App() {
                 onClick={syncAll22Activities}
                 className="btn btn-secondary"
                 style={{ fontSize: "0.78rem", padding: "0.42rem 0.75rem" }}
-                title="Réinitialiser / synchroniser les 22 activités illustrées"
+                title="Réinitialiser / synchroniser les 26 activités illustrées avec liens"
               >
-                <RefreshCw size={14} /> Synchroniser les 22 idées
+                <RefreshCw size={14} /> Synchroniser les 26 idées
               </button>
             </div>
 
@@ -2197,7 +2211,7 @@ export default function App() {
               <input
                 type="text"
                 className="input"
-                placeholder="Proposer une autre activité..."
+                placeholder="Titre de l'activité *"
                 value={newActTitle}
                 onChange={(e) => setNewActTitle(e.target.value)}
                 required
@@ -2223,13 +2237,27 @@ export default function App() {
                 value={newActDesc}
                 onChange={(e) => setNewActDesc(e.target.value)}
               />
+              <input
+                type="url"
+                className="input"
+                placeholder="Lien du site web (https://...)"
+                value={newActWebsiteUrl}
+                onChange={(e) => setNewActWebsiteUrl(e.target.value)}
+              />
+              <input
+                type="url"
+                className="input"
+                placeholder="Lien image de fond (optionnel)"
+                value={newActImg}
+                onChange={(e) => setNewActImg(e.target.value)}
+              />
               <button type="submit" className="btn btn-primary">
-                <Plus size={16} /> Ajouter
+                <Plus size={16} /> Proposer
               </button>
             </form>
           </div>
 
-          {/* Grid of Activity Cards with Background Image & Hot/Cold Voting */}
+          {/* Grid of Activity Cards with Background Image, Website Link & Hot/Cold Voting */}
           <div className="grid-2">
             {filteredActivities.map((act) => {
               const hotVotes = Array.isArray(act.votesHot) ? act.votesHot : Array.isArray(act.votes) ? act.votes : [];
@@ -2247,31 +2275,52 @@ export default function App() {
                   <div className="activity-bg-overlay">
                     {/* Top badges */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", flexWrap: "wrap" }}>
-                      <span className="badge badge-gold" style={{ background: "rgba(15, 23, 42, 0.85)", backdropFilter: "blur(6px)" }}>
+                      <span className="badge badge-gold" style={{ background: "rgba(15, 23, 42, 0.88)", backdropFilter: "blur(6px)" }}>
                         {act.category}
                       </span>
                       <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
                         {act.day && (
-                          <span className="badge badge-sky" style={{ background: "rgba(15, 23, 42, 0.85)", backdropFilter: "blur(6px)" }}>
+                          <span className="badge badge-sky" style={{ background: "rgba(15, 23, 42, 0.88)", backdropFilter: "blur(6px)" }}>
                             📍 {act.day}
                           </span>
                         )}
                         {act.duration && (
-                          <span className="badge" style={{ background: "rgba(15, 23, 42, 0.85)", color: "#e2e8f0" }}>
+                          <span className="badge" style={{ background: "rgba(15, 23, 42, 0.88)", color: "#e2e8f0" }}>
                             ⏱️ {act.duration}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Content & Votes at bottom */}
+                    {/* Content, Website Link & Votes at bottom */}
                     <div style={{ marginTop: "auto" }}>
-                      <h3 style={{ fontSize: "1.12rem", fontWeight: 800, marginBottom: "0.35rem", textShadow: "0 2px 6px rgba(0,0,0,0.8)" }}>
+                      <h3 style={{ fontSize: "1.12rem", fontWeight: 800, marginBottom: "0.35rem", textShadow: "0 2px 6px rgba(0,0,0,0.85)" }}>
                         {act.title}
                       </h3>
-                      <p style={{ fontSize: "0.84rem", color: "#e2e8f0", marginBottom: "0.85rem", lineHeight: 1.45 }}>
+                      <p style={{ fontSize: "0.84rem", color: "#e2e8f0", marginBottom: "0.7rem", lineHeight: 1.45 }}>
                         {act.description}
                       </p>
+
+                      {/* Official Website Link Button */}
+                      {act.websiteUrl && (
+                        <div style={{ marginBottom: "0.7rem" }}>
+                          <a
+                            href={act.websiteUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-secondary"
+                            style={{
+                              padding: "0.36rem 0.75rem",
+                              fontSize: "0.78rem",
+                              background: "rgba(15, 23, 42, 0.82)",
+                              borderColor: "rgba(56, 189, 248, 0.45)",
+                              color: "#7dd3fc"
+                            }}
+                          >
+                            🌐 {act.websiteLabel || "Voir le site / Infos"} <ExternalLink size={13} />
+                          </a>
+                        </div>
+                      )}
 
                       {/* Voters breakdown */}
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginBottom: "0.75rem", fontSize: "0.78rem" }}>

@@ -457,8 +457,64 @@ export const INITIAL_GROCERIES = [
   { id: "g-10", label: "Papier toilette (spécial sani-broyeur), Essuie-tout, Tablettes lave-vaisselle", category: "Maison & Essentiels", broughtBy: "Drive Villefranche", checked: false }
 ];
 
-// Les 22 activités recherchées autour de Maleville avec image de fond et vote Chaud 🔥 / Pas chaud ❄️
+// Les 26 activités recherchées autour de Maleville avec image de fond, lien du site officiel et vote Chaud 🔥 / Pas chaud ❄️
 export const INITIAL_ACTIVITIES = [
+  {
+    id: "act-00-speleo-causses",
+    title: "Spéléologie Découverte (dès 5 ans) & Spéléo Sportive à 13°C sous les Causses",
+    category: "Sport & Aventure",
+    day: "À 15–25 min (Causses de Villeneuve / Gorges)",
+    duration: "Demi-journée (2h30 à 3h)",
+    description: "L'activité reine en plein hiver car il fait 13°C constant sous terre à l'abri de la pluie et du froid ! Deux formules avec moniteur diplômé (TAK Spéléo / Nicolas Daniel) : parcours « Découverte Famille » ludique dès 5 ans (casque, frontale, grandes salles, petits passages secrets) ou sortie « Spéléo Sportive » avec rappels sur corde pour les adultes.",
+    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/0/0c/Caving2.jpg",
+    websiteUrl: "https://www.takspeleo.com/",
+    websiteLabel: "Site TAK Spéléo / Infos",
+    proposedBy: "Baptiste",
+    votesHot: ["Baptiste"],
+    votesCold: []
+  },
+  {
+    id: "act-00b-velo-vtt-gorges",
+    title: "Sortie Vélo, VTT & VTT Électrique (VTTAE) dans les Gorges de l'Aveyron",
+    category: "Sport & Aventure",
+    day: "Départ Maleville ou Najac (25 min)",
+    duration: "2h à demi-journée",
+    description: "Pour les sportifs du groupe ! Boucles VTT / Gravel sur les crêtes du Ségala au départ de Maleville, ou location de VTT à assistance électrique (VTTAE Haibike adultes & juniors 24 pouces) à la base de Najac pour avaler le dénivelé des Gorges de l'Aveyron et relier les bastides.",
+    imageUrl: "https://images.unsplash.com/photo-1544191696-102dbdaeeaa0?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.activites-loisirs-aveyron.com/location-vtt-electrique-aveyron/",
+    websiteLabel: "Location VTTAE & Parcours",
+    proposedBy: "Baptiste",
+    votesHot: ["Baptiste"],
+    votesCold: []
+  },
+  {
+    id: "act-00c-via-ferrata-escalade",
+    title: "Via Ferrata du Roc del Gorb, Ponts de Singe & Tyrolienne de 100m (Bor-et-Bar)",
+    category: "Sport & Aventure",
+    day: "À 25 min (Vallée du Viaur)",
+    duration: "2h30 à 3h",
+    description: "Site naturel spectaculaire en accès libre toute l'année au-dessus des gorges sauvages du Viaur ! Échelles verticales, ponts de singe, passerelles et grande tyrolienne finale de 100 mètres. Location des baudriers/longes/poulies à l'Office de Tourisme de Villefranche/Najac ou sortie encadrée.",
+    imageUrl: "https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.bastides-gorges-aveyron.fr/diffusio/fr/activites/sports-nature/bor-et-bar/site-d-escalade-et-de-via-ferrata-du-roc-du-gorb_TFO18995751141/",
+    websiteLabel: "Topo & Infos Via Ferrata",
+    proposedBy: "Baptiste",
+    votesHot: ["Baptiste"],
+    votesCold: []
+  },
+  {
+    id: "act-00d-trail-running-lezert",
+    title: "Session Trail / Footing Décrassage dans les Gorges du Lézert & GR 62B",
+    category: "Sport & Aventure",
+    day: "Au départ du Château (0 min)",
+    duration: "1h à 1h45 (8 à 15 km)",
+    description: "Pour les coureurs du groupe qui veulent éliminer la raclette et l'aligot ! Trace de trail technique et vallonnée plongeant depuis le plateau de Maleville vers les rives sauvages de l'Aveyron et les gorges encaissées du Lézert (350 m D+).",
+    imageUrl: "https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.visorando.com/randonnee-maleville.html",
+    websiteLabel: "Traces GPX & Topos",
+    proposedBy: "Baptiste",
+    votesHot: [],
+    votesCold: []
+  },
   {
     id: "act-01-cheval-broutie",
     title: "Balade à Cheval & Poney Shetland en main (La Broutie / Chevauchée Nature)",
@@ -467,6 +523,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "1h30 à 2h30",
     description: "Initiation et balade en pleine nature sur les chemins du Ségala. Poneys tenus en main par les parents pour les enfants (4-10 ans) et rando à cheval ou calèche pour les adultes (Domaine de la Broutie à Maleville ou La Chevauchée Nature à Sainte-Croix).",
     imageUrl: "https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.bastides-gorges-aveyron.fr/organiser/activites-de-pleine-nature/equitation/",
+    websiteLabel: "Centres équestres locaux",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -479,6 +537,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h à demi-journée",
     description: "Ferme Équestre de Daoudou à Najac : petits chevaux nordiques Fjord ultra-dociles au pied sûr, selles bi-places pour embarquer les petits (4-6 ans) avec un parent, poneys Shetland et balade en calèche au-dessus des Gorges de l'Aveyron.",
     imageUrl: "https://images.unsplash.com/photo-1598974357801-cbca100e65d3?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.bastides-gorges-aveyron.fr/diffusio/fr/activites/equitation/najac/ferme-equestre-de-daoudou_TFO294312915298/",
+    websiteLabel: "Ferme Équestre de Daoudou",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -491,6 +551,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h30",
     description: "Grande course d'orientation aux balises et jeu de piste médiéval dans les bois et ruelles de Najac (toute l'année). Créneau groupe privé de Tir à l'arc / Battle Archery (flèches mousse) ou Laser Game outdoor en forêt sur réservation groupe à l'AAGAC.",
     imageUrl: "https://images.unsplash.com/photo-1510925758641-869d353cecc7?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.activites-loisirs-aveyron.com/",
+    websiteLabel: "Site Base AAGAC Najac",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -503,6 +565,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h30",
     description: "Le plan B idéal bien au chaud si la météo est capricieuse ! Pistes de bowling avec rails automatiques et toboggans de lancement pour les enfants, + arène Laser Game indoor et billards pour le tournoi des adultes.",
     imageUrl: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.bowlingdurouergue.com/",
+    websiteLabel: "Bowling du Rouergue",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -515,6 +579,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "1h30 à 2h30 (4 à 8 km)",
     description: "Départ zéro voiture directement depuis le Château des Cœurs à Maleville sur les sentiers bordés de murets en pierre sèche et de chênes. Boucle modulable très accessible pour les enfants avec pause goûter panoramique.",
     imageUrl: "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.bastides-gorges-aveyron.fr/organiser/activites-de-pleine-nature/randonnee-pedestre/",
+    websiteLabel: "Circuits Rando Autour du Gîte",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -527,6 +593,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h à 3h (Boucle 5 km)",
     description: "Superbe immersion au fond des gorges sauvages de l'Aveyron et du Lézert : traversée du pittoresque Pont de pierre du Cayla au-dessus des rapides et exploration des anciennes forges hydrauliques à cuivre (Martinets du Lézert).",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Aveyron_River_B.jpg/1280px-Aveyron_River_B.jpg",
+    websiteUrl: "https://lesmartinetsdulezert.fr/",
+    websiteLabel: "Site Les Martinets du Lézert",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -539,6 +607,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "Demi-journée (100% plat)",
     description: "Balade spectaculaire 100% plate creusée directement dans la falaise calcaire au-dessus du Lot (avec bas-relief monumental sculpté dans la roche) jusqu'au célèbre village perché de Saint-Cirq-Lapopie.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Chemin_de_halage_bouzi%C3%A8s.jpg/1280px-Chemin_de_halage_bouzi%C3%A8s.jpg",
+    websiteUrl: "https://www.cahorsvalleedulot.com/decouvrir/les-incontournables/saint-cirq-lapopie/",
+    websiteLabel: "Infos Halage & St-Cirq-Lapopie",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -551,6 +621,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h à 2h30",
     description: "Ouvert en accès libre toute l'année ! Ancienne cité médiévale engloutie dans la nature avec deux tours perchées sur un piton rocheux, beffroi, hôpital des Anglais en ruines et escaliers taillés dans le roc. Super terrain d'aventure pour les enfants.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Castle_of_Peyrusse-le-Roc_01.jpg/1280px-Castle_of_Peyrusse-le-Roc_01.jpg",
+    websiteUrl: "https://www.bastides-gorges-aveyron.fr/decouvrir/les-incontournables/peyrusse-le-roc/",
+    websiteLabel: "Découvrir Peyrusse-le-Roc",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -563,6 +635,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h30 à 3h",
     description: "Classé parmi les Plus Beaux Villages de France : rue unique le long d'une crête vertigineuse dominée par l'impressionnante Forteresse Royale. Livret-jeu d'énigmes familial depuis la place du Faubourg jusqu'au donjon.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/7/7e/Ch%C3%A2teau_Najac.jpg",
+    websiteUrl: "https://www.bastides-gorges-aveyron.fr/decouvrir/les-incontournables/najac/",
+    websiteLabel: "Guide Najac & Forteresse",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -575,6 +649,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h30",
     description: "Joyau classé Plus Beaux Villages de France au bord de la rivière Aveyron : pont médiéval en dos-d'âne du XVe siècle, ruelles pavées en calades, maisons à toits de lauze et remparts du château fort restauré par Fernand Pouillon.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Belcastel_4.jpg/1280px-Belcastel_4.jpg",
+    websiteUrl: "https://www.tourisme-aveyron.com/fr/decouvrir/incontournables/belcastel",
+    websiteLabel: "Infos Village de Belcastel",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -587,6 +663,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h",
     description: "Exploration de la place Notre-Dame à arcades, de l'immense Collégiale et de la Chapelle baroque des Pénitents Noirs. Sacs de jeux familiaux « Istorias » à l'Office de Tourisme pour mener l'enquête avec les enfants.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Aerial_image_of_Villefranche-de-Rouergue_%28view_from_the_west%29.jpg/1280px-Aerial_image_of_Villefranche-de-Rouergue_%28view_from_the_west%29.jpg",
+    websiteUrl: "https://www.bastides-gorges-aveyron.fr/decouvrir/les-incontournables/villefranche-de-rouergue/",
+    websiteLabel: "Site Bastide de Villefranche",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -599,6 +677,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "1h30 à 2h",
     description: "Rivière souterraine, draperies de calcite, squelettes d'ours des cavernes et empreintes d'enfants préhistoriques vieilles de 4 000 ans ! Température constante de 13°C (au chaud en décembre, ouverture groupe sur réservation).",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Foissac_DSC03448_mod.jpg/1280px-Foissac_DSC03448_mod.jpg",
+    websiteUrl: "https://www.grotte-de-foissac.fr/",
+    websiteLabel: "Site officiel Grotte de Foissac",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -611,6 +691,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "Demi-journée (3h30)",
     description: "Chef-d'œuvre classé UNESCO magique pendant les fêtes. Les enfants cherchent les petits démons et chevaliers sculptés sur le Tympan du Jugement Dernier pendant qu'on admire les vitraux de Soulages et les ruelles médiévales.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Conques_eglise_face_ter.jpg/1280px-Conques_eglise_face_ter.jpg",
+    websiteUrl: "https://www.tourisme-conques.fr/",
+    websiteLabel: "Office de Tourisme de Conques",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -623,6 +705,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "Demi-journée",
     description: "Ouvert toute la semaine entre Noël et le Jour de l'An (sauf le 1er janv.). Grand musée international avec livrets-jeux enfants autour de l'Outrenoir, à combiner avec la Cathédrale de grès rose et les illuminations de Rodez.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/France_Occitanie_12_Rodez_Soulages_01.jpg/1280px-France_Occitanie_12_Rodez_Soulages_01.jpg",
+    websiteUrl: "https://musee-soulages-rodez.fr/",
+    websiteLabel: "Site officiel Musée Soulages",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -635,6 +719,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "Demi-journée (3h)",
     description: "Souvent entourée d'une mer de brume hivernale qui lui donne son nom de cité dans le ciel : portes fortifiées, façades gothiques sculptées de dragons et d'animaux fantastiques et ateliers d'artisans.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Aerial_image_of_Cordes-sur-Ciel_%28view_from_the_southwest%29.jpg/1280px-Aerial_image_of_Cordes-sur-Ciel_%28view_from_the_southwest%29.jpg",
+    websiteUrl: "https://www.cordessurciel.fr/",
+    websiteLabel: "Site Cordes-sur-Ciel",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -647,6 +733,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h",
     description: "L'un des plus beaux marchés vivants d'Occitanie autour de la collégiale ! Idéal le matin du 31 décembre pour faire le plein de foie gras fermier, truffes, gâteau à la broche cuit au feu de bois, fouace, huîtres et fromages.",
     imageUrl: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.bastides-gorges-aveyron.fr/savourer/marches-de-producteurs/",
+    websiteLabel: "Infos Marchés de Producteurs",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -659,6 +747,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h",
     description: "Le rendez-vous du premier matin ! Marché de producteurs au cœur de la bastide médiévale de Villeneuve, dégustation de farçous chauds et passage chez le Caviste Santé Bonheur.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Villeneuve-aveyron-2020.jpg/1280px-Villeneuve-aveyron-2020.jpg",
+    websiteUrl: "https://www.bastides-gorges-aveyron.fr/decouvrir/les-incontournables/villeneuve-daveyron/",
+    websiteLabel: "Bastide de Villeneuve",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -671,6 +761,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "1h30 (Lun–Sam matin)",
     description: "Exploitation familiale ouverte toute l'année : les 7 enfants découvrent les vaches et les petits veaux à l'étable pendant qu'on achète en direct la tomme fraîche et l'aligot fermier fait maison.",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Wikicheese_-_Roquefort_-_20150417_-_002.jpg/1280px-Wikicheese_-_Roquefort_-_20150417_-_002.jpg",
+    websiteUrl: "https://www.bienvenue-a-la-ferme.com/occitanie/aveyron/le-bas-segala/ferme/la-roselle/343573",
+    websiteLabel: "Page Ferme de La Roselle",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -683,6 +775,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h",
     description: "Route panoramique à travers les terres rouges (« rougiers ») et les vignes en terrasses. Visite des chais voûtés et dégustation des vins rouges AOP Marcillac (Domaine Laurens / Domaine du Cros) + jus de raisin artisanal pour les enfants.",
     imageUrl: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1000&q=80",
+    websiteUrl: "https://www.domaine-laurens.com/",
+    websiteLabel: "Site Domaine Laurens (Marcillac)",
     proposedBy: "Baptiste",
     votesHot: [],
     votesCold: []
@@ -695,6 +789,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "Soirée complète",
     description: "Faire venir un chef à domicile ou un artisan traiteur local (Maison Railhet, De la Ferme sur Votre Table, Le Relais de la Pastorale à Maleville) pour un festin d'Aligot géant filé à la grande cuillère en bois et bœuf d'Aubrac !",
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Bol_d%27aligot.jpg/1280px-Bol_d%27aligot.jpg",
+    websiteUrl: "https://www.maison-railhet.fr/",
+    websiteLabel: "Traiteur Maison Railhet",
     proposedBy: "Ludivine & Maud",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -707,6 +803,8 @@ export const INITIAL_ACTIVITIES = [
     duration: "En accès libre",
     description: "Bassin intérieur couvert de 8x4m chauffé à 26°C pour les jeux aquatiques avec les enfants, et espace Spa réservé aux adultes (+10 ans) avec Hammam au savon noir et Sauna pour récupérer après les balades.",
     imageUrl: "https://a0.muscache.com/im/pictures/bb692ecc-305a-4986-84bf-876ade3c9b58.jpg?im_w=1200",
+    websiteUrl: "https://www.airbnb.fr/rooms/45049685",
+    websiteLabel: "Voir le Spa sur Airbnb",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
@@ -719,8 +817,11 @@ export const INITIAL_ACTIVITIES = [
     duration: "2h30",
     description: "Tournoi de Ping-Pong (simple, double et tournante), séance dessin animé/film dans le Salon Cinéma, grand Blindtest musical dans le Salon Piano et parties de Loup-Garou devant la grande cheminée.",
     imageUrl: "https://a0.muscache.com/im/pictures/2b957cf1-703e-4b9d-8d9a-7fcdf8747eaa.jpg?im_w=1200",
+    websiteUrl: "https://www.airbnb.fr/rooms/45049685",
+    websiteLabel: "Voir les Salons du Château",
     proposedBy: "Baptiste",
     votesHot: ["Baptiste"],
     votesCold: []
   }
 ];
+
