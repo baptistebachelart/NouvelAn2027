@@ -18,7 +18,6 @@ import {
 import confetti from "canvas-confetti";
 import {
   Sparkles,
-  MessageCircle,
   Camera,
   Utensils,
   BedDouble,
@@ -32,9 +31,7 @@ import {
   Plus,
   Trash2,
   ExternalLink,
-  Users,
   Car,
-  Music,
   Wallet,
   Settings,
   ChevronRight,
@@ -53,11 +50,15 @@ import {
   GITE_INFO,
   INITIAL_FAMILIES,
   FRIEND_COUPLE_PRESETS,
+  STAY_DAYS,
   INITIAL_ROOMS,
   INITIAL_MEALS,
+  INITIAL_MEAL_IDEAS,
+  GOOGLE_PHOTOS_2026_PREVIEWS,
   INITIAL_GROCERIES,
   INITIAL_ACTIVITIES
 } from "./data/giteData";
+import ActivitiesMap from "./components/ActivitiesMap";
 
 function computeTimeLeft(targetIso) {
   const diff = new Date(targetIso).getTime() - Date.now();
@@ -77,9 +78,20 @@ const DEFAULT_CATEGORY_IMAGES = {
   "Sport & Aventure": "https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?auto=format&fit=crop&w=1000&q=80",
   "Rando & Nature": "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1000&q=80",
   "Visite & Patrimoine": "https://upload.wikimedia.org/wikipedia/commons/7/7e/Ch%C3%A2teau_Najac.jpg",
-  "Terroir & Gastronomie": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Bol_d%27aligot.jpg/1280px-Bol_d%27aligot.jpg",
-  "Sur place au Château": "https://a0.muscache.com/im/pictures/bb692ecc-305a-4986-84bf-876ade3c9b58.jpg?im_w=1200"
+  "Terroir & Gastronomie": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Bol_d%27aligot.jpg/1280px-Bol_d%27aligot.jpg"
 };
+
+const REMOVED_HOME_ACTIVITY_IDS = [
+  "act-1",
+  "act-2",
+  "act-3",
+  "act-4",
+  "act-5",
+  "act-6",
+  "act-20-aligot-geant-chef-chateau",
+  "act-21-piscine-hammam-sauna",
+  "act-22-cinema-blindtest-loupgarou"
+];
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -113,14 +125,10 @@ export default function App() {
   const [families, setFamilies] = useState(INITIAL_FAMILIES);
   const [rooms, setRooms] = useState(INITIAL_ROOMS);
   const [meals, setMeals] = useState(INITIAL_MEALS);
+  const [mealIdeas, setMealIdeas] = useState(INITIAL_MEAL_IDEAS);
   const [groceries, setGroceries] = useState(INITIAL_GROCERIES);
   const [activities, setActivities] = useState(INITIAL_ACTIVITIES);
   const [photoHighlights, setPhotoHighlights] = useState([]);
-  const [cateringPollVotes, setCateringPollVotes] = useState({
-    chef: ["Ludivine", "Baptiste"],
-    traiteur: ["Maud"],
-    "babysitter-resto": ["Maud"]
-  });
 
   // Local interactive states
   const [checkedPacking, setCheckedPacking] = useState(() => {
@@ -153,6 +161,12 @@ export default function App() {
   const [newFamOrigin, setNewFamOrigin] = useState("");
   const [newFamKidsText, setNewFamKidsText] = useState("");
 
+  // Meal idea form
+  const [newMealIdeaTitle, setNewMealIdeaTitle] = useState("");
+  const [newMealIdeaCooks, setNewMealIdeaCooks] = useState("");
+  const [newMealIdeaSlotId, setNewMealIdeaSlotId] = useState("");
+
+  // Grocery form
   const [newGroceryLabel, setNewGroceryLabel] = useState("");
   const [newGroceryCategory, setNewGroceryCategory] = useState("Spécialités Régionales");
   const [newGroceryWho, setNewGroceryWho] = useState("");
@@ -162,16 +176,12 @@ export default function App() {
   const [actCategoryFilter, setActCategoryFilter] = useState("Toutes");
   const [newActTitle, setNewActTitle] = useState("");
   const [newActCat, setNewActCat] = useState("Sport & Aventure");
-  const [newActDay, setNewActDay] = useState("En semaine");
+  const [newActDay, setNewActDay] = useState("");
   const [newActDesc, setNewActDesc] = useState("");
   const [newActImg, setNewActImg] = useState("");
   const [newActWebsiteUrl, setNewActWebsiteUrl] = useState("");
 
   const [newOccupantByRoom, setNewOccupantByRoom] = useState({});
-  const [myArrivalTime, setMyArrivalTime] = useState("");
-  const [myTransport, setMyTransport] = useState("");
-  const [arrivalSaved, setArrivalSaved] = useState(false);
-
   const [newPhotoTitle, setNewPhotoTitle] = useState("");
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
 
@@ -184,7 +194,7 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Native <dialog closedby="any"> fallback for browsers without declarative closedBy support
+  // Native <dialog closedby="any"> fallback
   useEffect(() => {
     const dialogs = [linksDialogRef.current, mealDialogRef.current, familyDialogRef.current].filter(Boolean);
     if ("closedBy" in HTMLDialogElement.prototype) return;
@@ -222,7 +232,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
-    // 1. Settings / Links (auto-populate Google Photos 2027, 2026 & Tricount if missing)
+    // 1. Settings / Links
     const unsubSettings = onSnapshot(
       doc(db, "settings", "global"),
       async (snap) => {
@@ -250,17 +260,6 @@ export default function App() {
             tricountUrl: nextTricount,
             playlistUrl: data.playlistUrl || ""
           });
-          if (!data.googlePhotosUrl || !data.tricountUrl) {
-            await setDoc(
-              doc(db, "settings", "global"),
-              {
-                googlePhotosUrl: nextGooglePhotos,
-                tricountUrl: nextTricount,
-                updatedAt: Date.now()
-              },
-              { merge: true }
-            ).catch(() => {});
-          }
         }
       },
       (err) => console.warn("Settings listener warning:", err.message)
@@ -272,52 +271,87 @@ export default function App() {
       (snap) => {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setMembers(list);
-        const me = list.find((m) => m.id === user.uid);
-        if (me) {
-          setMyArrivalTime((prev) => prev || me.arrivalTime || "");
-          setMyTransport((prev) => prev || me.transport || "");
-        }
       },
       (err) => console.warn("Users listener warning:", err.message)
     );
 
-    // 3. Families (Couples + Children)
+    // 3. Families (Ensure all 12 families exist & clean up old duplicate IDs)
     const unsubFamilies = onSnapshot(
       collection(db, "families"),
       async (snap) => {
-        if (snap.empty) {
-          for (const fam of INITIAL_FAMILIES) {
+        const existingIds = new Set(snap.docs.map((d) => d.id));
+        const legacyFamIds = [
+          "fam-baptiste-lulu",
+          "fam-remi-mc",
+          "fam-matthieu-maud",
+          "fam-antoine-rachel",
+          "fam-guillaume-elizabeth",
+          "fam-vincent-hortense",
+          "fam-famille-7"
+        ];
+        for (const oldId of legacyFamIds) {
+          if (existingIds.has(oldId)) {
+            await deleteDoc(doc(db, "families", oldId)).catch(() => {});
+          }
+        }
+
+        const missingFams = INITIAL_FAMILIES.filter((f) => !existingIds.has(f.id));
+        if (missingFams.length > 0) {
+          for (const fam of missingFams) {
             await setDoc(doc(db, "families", fam.id), {
               name: fam.coupleName,
               city: fam.origin,
               adults: fam.adults,
               kids: fam.children,
+              arrivalTime: `${fam.arrivalDate || "Sam. 26 Déc."} • ${fam.arrivalTime || "À préciser"}`,
+              departureTime: `${fam.departureDate || "Sam. 2 Janv."} • ${fam.departureTime || "À préciser"}`,
+              transport: fam.transport || "Voiture",
               adultRoomId: fam.adultRoomId || "",
               kidsRoomId: fam.kidsRoomId || "",
               depositPaid: !!fam.depositPaid,
               updatedAt: Date.now()
             }).catch(() => {});
           }
-        } else {
-          const loaded = snap.docs.map((d) => {
-            const data = d.data();
-            return {
-              id: d.id,
-              coupleName: data.name || data.coupleName || "Couple",
-              origin: data.city || data.origin || "",
-              adults: Array.isArray(data.adults) ? data.adults : [],
-              children: Array.isArray(data.kids)
-                ? data.kids
-                : Array.isArray(data.children)
-                ? data.children
-                : [],
-              adultRoomId: data.adultRoomId || "",
-              kidsRoomId: data.kidsRoomId || "",
-              depositPaid: !!data.depositPaid
-            };
-          });
+        }
+
+        if (!snap.empty) {
+          const initialMap = Object.fromEntries(INITIAL_FAMILIES.map((f) => [f.id, f]));
+          const loaded = snap.docs
+            .filter((d) => !legacyFamIds.includes(d.id))
+            .map((d) => {
+              const data = d.data();
+              const preset = initialMap[d.id] || {};
+              const [arrDatePart, arrTimePart] = (data.arrivalTime || "").includes("•")
+                ? data.arrivalTime.split("•").map((s) => s.trim())
+                : [preset.arrivalDate || "Sam. 26 Déc.", data.arrivalTime || preset.arrivalTime || "À préciser"];
+              const [depDatePart, depTimePart] = (data.departureTime || "").includes("•")
+                ? data.departureTime.split("•").map((s) => s.trim())
+                : [preset.departureDate || "Sam. 2 Janv.", data.departureTime || preset.departureTime || "À préciser"];
+
+              return {
+                id: d.id,
+                coupleName: data.name || data.coupleName || preset.coupleName || "Couple",
+                origin: data.city || data.origin || preset.origin || "",
+                adults: Array.isArray(data.adults) ? data.adults : preset.adults || [],
+                children: Array.isArray(data.kids)
+                  ? data.kids
+                  : Array.isArray(data.children)
+                  ? data.children
+                  : preset.children || [],
+                arrivalDate: arrDatePart || "Sam. 26 Déc.",
+                arrivalTime: arrTimePart || "À préciser",
+                departureDate: depDatePart || "Sam. 2 Janv.",
+                departureTime: depTimePart || "À préciser",
+                transport: data.transport || preset.transport || "Voiture",
+                adultRoomId: data.adultRoomId !== undefined ? data.adultRoomId : preset.adultRoomId || "",
+                kidsRoomId: data.kidsRoomId !== undefined ? data.kidsRoomId : preset.kidsRoomId || "",
+                depositPaid: data.depositPaid !== undefined ? !!data.depositPaid : !!preset.depositPaid
+              };
+            });
           loaded.sort((a, b) => a.id.localeCompare(b.id));
-          setFamilies(loaded);
+          if (loaded.length > 0) {
+            setFamilies(loaded);
+          }
         }
       },
       (err) => console.warn("Families listener warning:", err.message)
@@ -354,7 +388,7 @@ export default function App() {
       (err) => console.warn("Rooms listener warning:", err.message)
     );
 
-    // 5. Meals
+    // 5. Meals (Agenda 7 jours) + Meal Ideas (stockées dans polls/meal-ideas)
     const unsubMeals = onSnapshot(
       collection(db, "meals"),
       async (snap) => {
@@ -363,8 +397,8 @@ export default function App() {
             await setDoc(doc(db, "meals", m.id), {
               day: m.day,
               slot: m.slot,
-              menu: m.menu,
-              cooks: m.cooks,
+              menu: m.menu || "",
+              cooks: m.cooks || "",
               notes: m.notes || "",
               updatedAt: Date.now()
             }).catch(() => {});
@@ -376,6 +410,25 @@ export default function App() {
         }
       },
       (err) => console.warn("Meals listener warning:", err.message)
+    );
+
+    const unsubMealIdeas = onSnapshot(
+      doc(db, "polls", "meal-ideas-board"),
+      async (snap) => {
+        if (!snap.exists()) {
+          await setDoc(doc(db, "polls", "meal-ideas-board"), {
+            title: "Propositions de Repas & Qui s'en occupe",
+            options: INITIAL_MEAL_IDEAS,
+            updatedAt: Date.now()
+          }).catch(() => {});
+        } else {
+          const data = snap.data();
+          if (Array.isArray(data.options)) {
+            setMealIdeas(data.options);
+          }
+        }
+      },
+      (err) => console.warn("Meal ideas listener warning:", err.message)
     );
 
     // 6. Groceries
@@ -402,18 +455,24 @@ export default function App() {
       (err) => console.warn("Groceries listener warning:", err.message)
     );
 
-    // 7. Activities (Auto-seed the 26 illustrated activities & merge websiteUrl/imageUrl)
+    // 7. Activities (Remove home activities & enrich with GPS + distanceFromGite)
     const unsubActivities = onSnapshot(
       collection(db, "activities"),
       async (snap) => {
         const existingIds = new Set(snap.docs.map((d) => d.id));
+        for (const remId of REMOVED_HOME_ACTIVITY_IDS) {
+          if (existingIds.has(remId)) {
+            await deleteDoc(doc(db, "activities", remId)).catch(() => {});
+          }
+        }
+
         const missingNewActs = INITIAL_ACTIVITIES.filter((a) => !existingIds.has(a.id));
         if (missingNewActs.length > 0) {
           for (const a of missingNewActs) {
             await setDoc(doc(db, "activities", a.id), {
               title: a.title,
               category: a.category,
-              day: a.day,
+              day: a.distanceFromGite || a.day,
               duration: a.duration,
               description: a.description,
               imageUrl: a.imageUrl,
@@ -426,17 +485,16 @@ export default function App() {
               createdAt: Date.now()
             }).catch(() => {});
           }
-          // Clean up legacy v1 activities (act-1..act-6) that had no background image
-          for (const legacyId of ["act-1", "act-2", "act-3", "act-4", "act-5", "act-6"]) {
-            if (existingIds.has(legacyId)) {
-              await deleteDoc(doc(db, "activities", legacyId)).catch(() => {});
-            }
-          }
         }
+
         if (!snap.empty) {
           const initialById = Object.fromEntries(INITIAL_ACTIVITIES.map((a) => [a.id, a]));
           const loaded = snap.docs
-            .filter((d) => !["act-1", "act-2", "act-3", "act-4", "act-5", "act-6"].includes(d.id))
+            .filter(
+              (d) =>
+                !REMOVED_HOME_ACTIVITY_IDS.includes(d.id) &&
+                d.data()?.category !== "Sur place au Château"
+            )
             .map((d) => {
               const data = d.data();
               const preset = initialById[d.id] || {};
@@ -450,6 +508,12 @@ export default function App() {
                 id: d.id,
                 ...preset,
                 ...data,
+                title: preset.title || data.title,
+                description: preset.description || data.description,
+                distanceFromGite: preset.distanceFromGite || data.day || "Autour du gîte",
+                locationName: preset.locationName || data.title,
+                lat: preset.lat,
+                lng: preset.lng,
                 imageUrl: data.imageUrl || preset.imageUrl || "",
                 websiteUrl: data.websiteUrl || preset.websiteUrl || "",
                 websiteLabel: data.websiteLabel || preset.websiteLabel || "Voir le site / Infos",
@@ -470,31 +534,7 @@ export default function App() {
       (err) => console.warn("Activities listener warning:", err.message)
     );
 
-    // 8. WhatsApp Catering Poll
-    const unsubPolls = onSnapshot(
-      doc(db, "polls", "catering-special-night"),
-      async (snap) => {
-        if (!snap.exists()) {
-          await setDoc(doc(db, "polls", "catering-special-night"), {
-            title: "Soirée spéciale sans cuisiner (Discussion WhatsApp)",
-            options: {
-              chef: ["Ludivine", "Baptiste"],
-              traiteur: ["Maud"],
-              "babysitter-resto": ["Maud"]
-            },
-            updatedAt: Date.now()
-          }).catch(() => {});
-        } else {
-          const data = snap.data();
-          if (data.options) {
-            setCateringPollVotes(data.options);
-          }
-        }
-      },
-      (err) => console.warn("Polls listener warning:", err.message)
-    );
-
-    // 9. Photo highlights
+    // 8. Photo highlights
     const unsubPhotos = onSnapshot(
       collection(db, "photos_highlights"),
       (snap) => {
@@ -511,9 +551,9 @@ export default function App() {
       unsubFamilies();
       unsubRooms();
       unsubMeals();
+      unsubMealIdeas();
       unsubGroceries();
       unsubActivities();
-      unsubPolls();
       unsubPhotos();
     };
   }, [user]);
@@ -523,6 +563,15 @@ export default function App() {
     members.find((m) => m.id === user?.uid)?.firstName ||
     user?.email?.split("@")[0] ||
     "Pote";
+
+  // Helper list of all adults/couples for quick assignment dropdowns
+  const allAssigneesList = [
+    "À définir",
+    "Tout le monde",
+    userDisplayName,
+    ...families.map((f) => (f.adults || []).join(" & ")).filter(Boolean),
+    ...families.flatMap((f) => f.adults || []).filter(Boolean)
+  ].filter((v, idx, arr) => v && arr.indexOf(v) === idx);
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -610,71 +659,38 @@ export default function App() {
     linksDialogRef.current?.close();
   };
 
-  // Toggle vote on WhatsApp Catering Poll
-  const toggleCateringOptionVote = async (optionId) => {
-    const currentList = Array.isArray(cateringPollVotes[optionId]) ? cateringPollVotes[optionId] : [];
-    const hasVoted = currentList.includes(userDisplayName);
-    const nextList = hasVoted
-      ? currentList.filter((n) => n !== userDisplayName)
-      : [...currentList, userDisplayName];
-    const nextOptions = {
-      ...cateringPollVotes,
-      [optionId]: nextList
-    };
-    setCateringPollVotes(nextOptions);
+  // ==================== FAMILIES, ARRIVAL/DEPARTURE & BEDROOM ACTIONS ====================
+  const saveFamilyDoc = async (fam, overrides = {}) => {
+    const merged = { ...fam, ...overrides };
     await setDoc(
-      doc(db, "polls", "catering-special-night"),
+      doc(db, "families", merged.id),
       {
-        title: "Soirée spéciale sans cuisiner (Discussion WhatsApp)",
-        options: nextOptions,
+        name: merged.coupleName,
+        city: merged.origin || "",
+        adults: merged.adults || [],
+        kids: merged.children || [],
+        arrivalTime: `${merged.arrivalDate || "Sam. 26 Déc."} • ${merged.arrivalTime || "À préciser"}`,
+        departureTime: `${merged.departureDate || "Sam. 2 Janv."} • ${merged.departureTime || "À préciser"}`,
+        transport: merged.transport || "Voiture",
+        adultRoomId: merged.adultRoomId || "",
+        kidsRoomId: merged.kidsRoomId || "",
+        depositPaid: !!merged.depositPaid,
         updatedAt: Date.now()
       },
       { merge: true }
     );
   };
 
-  // Arrival update
-  const saveMyArrival = async (e) => {
-    e.preventDefault();
-    if (!user) return;
-    await setDoc(
-      doc(db, "users", user.uid),
-      {
-        uid: user.uid,
-        firstName: userDisplayName,
-        email: user.email || "",
-        arrivalTime: myArrivalTime.trim() || "Sam. 26 déc. 16h",
-        transport: myTransport.trim() || "Voiture",
-        updatedAt: Date.now()
-      },
-      { merge: true }
-    );
-    setArrivalSaved(true);
-    setTimeout(() => setArrivalSaved(false), 2500);
+  const updateFamilySchedule = async (fam, field, value) => {
+    await saveFamilyDoc(fam, { [field]: value });
   };
 
-  // ==================== FAMILIES & BEDROOM ASSIGNMENT ACTIONS ====================
   const assignFamilyAdultsToRoom = async (fam, targetRoomId) => {
     const prevRoomId = fam.adultRoomId;
     const adultNames = Array.isArray(fam.adults) ? fam.adults.filter(Boolean) : [];
 
-    // Update family doc
-    await setDoc(
-      doc(db, "families", fam.id),
-      {
-        name: fam.coupleName,
-        city: fam.origin || "",
-        adults: fam.adults,
-        kids: fam.children,
-        adultRoomId: targetRoomId,
-        kidsRoomId: fam.kidsRoomId || "",
-        depositPaid: !!fam.depositPaid,
-        updatedAt: Date.now()
-      },
-      { merge: true }
-    );
+    await saveFamilyDoc(fam, { adultRoomId: targetRoomId });
 
-    // Remove adult names from previous room if different
     if (prevRoomId && prevRoomId !== targetRoomId) {
       const oldRoom = rooms.find((r) => r.id === prevRoomId);
       if (oldRoom) {
@@ -683,7 +699,6 @@ export default function App() {
       }
     }
 
-    // Add adult names to target room
     if (targetRoomId) {
       const newRoom = rooms.find((r) => r.id === targetRoomId);
       if (newRoom) {
@@ -701,20 +716,7 @@ export default function App() {
     );
     const kidRawNames = (Array.isArray(fam.children) ? fam.children : []).map((c) => c.name);
 
-    await setDoc(
-      doc(db, "families", fam.id),
-      {
-        name: fam.coupleName,
-        city: fam.origin || "",
-        adults: fam.adults,
-        kids: fam.children,
-        adultRoomId: fam.adultRoomId || "",
-        kidsRoomId: targetRoomId,
-        depositPaid: !!fam.depositPaid,
-        updatedAt: Date.now()
-      },
-      { merge: true }
-    );
+    await saveFamilyDoc(fam, { kidsRoomId: targetRoomId });
 
     if (prevRoomId && prevRoomId !== targetRoomId) {
       const oldRoom = rooms.find((r) => r.id === prevRoomId);
@@ -743,20 +745,7 @@ export default function App() {
     if (!name) return;
 
     const nextChildren = [...(fam.children || []), { name, age: age || "Enfant" }];
-    await setDoc(
-      doc(db, "families", fam.id),
-      {
-        name: fam.coupleName,
-        city: fam.origin || "",
-        adults: fam.adults,
-        kids: nextChildren,
-        adultRoomId: fam.adultRoomId || "",
-        kidsRoomId: fam.kidsRoomId || "",
-        depositPaid: !!fam.depositPaid,
-        updatedAt: Date.now()
-      },
-      { merge: true }
-    );
+    await saveFamilyDoc(fam, { children: nextChildren });
 
     if (fam.kidsRoomId) {
       const kidRoom = rooms.find((r) => r.id === fam.kidsRoomId);
@@ -772,20 +761,7 @@ export default function App() {
   const removeChildFromFamily = async (fam, childIndex) => {
     const removed = (fam.children || [])[childIndex];
     const nextChildren = (fam.children || []).filter((_, i) => i !== childIndex);
-    await setDoc(
-      doc(db, "families", fam.id),
-      {
-        name: fam.coupleName,
-        city: fam.origin || "",
-        adults: fam.adults,
-        kids: nextChildren,
-        adultRoomId: fam.adultRoomId || "",
-        kidsRoomId: fam.kidsRoomId || "",
-        depositPaid: !!fam.depositPaid,
-        updatedAt: Date.now()
-      },
-      { merge: true }
-    );
+    await saveFamilyDoc(fam, { children: nextChildren });
 
     if (removed && fam.kidsRoomId) {
       const kidRoom = rooms.find((r) => r.id === fam.kidsRoomId);
@@ -797,20 +773,7 @@ export default function App() {
   };
 
   const toggleFamilyDeposit = async (fam) => {
-    await setDoc(
-      doc(db, "families", fam.id),
-      {
-        name: fam.coupleName,
-        city: fam.origin || "",
-        adults: fam.adults,
-        kids: fam.children,
-        adultRoomId: fam.adultRoomId || "",
-        kidsRoomId: fam.kidsRoomId || "",
-        depositPaid: !fam.depositPaid,
-        updatedAt: Date.now()
-      },
-      { merge: true }
-    );
+    await saveFamilyDoc(fam, { depositPaid: !fam.depositPaid });
   };
 
   const openFamilyEditor = (fam) => {
@@ -841,20 +804,11 @@ export default function App() {
     const coupleName =
       editingFamily.coupleName.trim() ||
       (adults.length === 2 ? `${adults[0]} & ${adults[1]}` : adults[0] || "Famille");
-    await setDoc(
-      doc(db, "families", editingFamily.id),
-      {
-        name: coupleName,
-        city: (editingFamily.origin || "").trim(),
-        adults,
-        kids: editingFamily.children || [],
-        adultRoomId: editingFamily.adultRoomId || "",
-        kidsRoomId: editingFamily.kidsRoomId || "",
-        depositPaid: !!editingFamily.depositPaid,
-        updatedAt: Date.now()
-      },
-      { merge: true }
-    );
+    await saveFamilyDoc(editingFamily, {
+      coupleName,
+      origin: (editingFamily.origin || "").trim(),
+      adults
+    });
     familyDialogRef.current?.close();
   };
 
@@ -872,15 +826,20 @@ export default function App() {
       .map((k) => ({ name: k, age: "" }));
 
     const newId = `fam-${Date.now()}`;
-    await setDoc(doc(db, "families", newId), {
-      name: coupleName,
-      city: newFamOrigin.trim() || "Team Potes",
+    await saveFamilyDoc({
+      id: newId,
+      coupleName,
+      origin: newFamOrigin.trim() || "Team Potes",
       adults,
-      kids: parsedKids,
+      children: parsedKids,
+      arrivalDate: "Sam. 26 Déc.",
+      arrivalTime: "À préciser",
+      departureDate: "Sam. 2 Janv.",
+      departureTime: "À préciser",
+      transport: "Voiture",
       adultRoomId: "",
       kidsRoomId: "",
-      depositPaid: false,
-      updatedAt: Date.now()
+      depositPaid: false
     });
     setNewFamAdult1("");
     setNewFamAdult2("");
@@ -913,7 +872,7 @@ export default function App() {
     });
   };
 
-  // Meal actions
+  // ==================== MEAL AGENDA (EMPTY BY DEFAULT) & MEAL IDEAS ACTIONS ====================
   const openMealEditor = (meal) => {
     setEditingMeal({ ...meal });
     mealDialogRef.current?.showModal();
@@ -927,8 +886,8 @@ export default function App() {
       {
         day: editingMeal.day,
         slot: editingMeal.slot,
-        menu: editingMeal.menu.trim(),
-        cooks: editingMeal.cooks.trim(),
+        menu: (editingMeal.menu || "").trim(),
+        cooks: (editingMeal.cooks || "").trim(),
         notes: (editingMeal.notes || "").trim(),
         updatedAt: Date.now()
       },
@@ -937,20 +896,153 @@ export default function App() {
     mealDialogRef.current?.close();
   };
 
-  const joinMealBrigade = async (meal) => {
-    const currentCooks = meal.cooks || "";
-    if (currentCooks.toLowerCase().includes(userDisplayName.toLowerCase())) return;
-    const nextCooks =
-      !currentCooks || currentCooks === "À définir"
-        ? userDisplayName
-        : `${currentCooks}, ${userDisplayName}`;
-    await updateDoc(doc(db, "meals", meal.id), {
-      cooks: nextCooks,
-      updatedAt: Date.now()
-    });
+  const clearAllMealsAgenda = async () => {
+    for (const m of INITIAL_MEALS) {
+      await setDoc(doc(db, "meals", m.id), {
+        day: m.day,
+        slot: m.slot,
+        menu: "",
+        cooks: "",
+        notes: "",
+        updatedAt: Date.now()
+      }).catch(() => {});
+    }
+    const resetIdeas = mealIdeas.map((idea) => ({ ...idea, assignedSlotId: "" }));
+    setMealIdeas(resetIdeas);
+    await setDoc(
+      doc(db, "polls", "meal-ideas-board"),
+      {
+        title: "Propositions de Repas & Qui s'en occupe",
+        options: resetIdeas,
+        updatedAt: Date.now()
+      },
+      { merge: true }
+    ).catch(() => {});
   };
 
-  // Groceries actions
+  const clearSingleMealSlot = async (meal) => {
+    await setDoc(
+      doc(db, "meals", meal.id),
+      {
+        day: meal.day,
+        slot: meal.slot,
+        menu: "",
+        cooks: "",
+        notes: "",
+        updatedAt: Date.now()
+      },
+      { merge: true }
+    );
+  };
+
+  const saveMealIdeasList = async (nextList) => {
+    setMealIdeas(nextList);
+    await setDoc(
+      doc(db, "polls", "meal-ideas-board"),
+      {
+        title: "Propositions de Repas & Qui s'en occupe",
+        options: nextList,
+        updatedAt: Date.now()
+      },
+      { merge: true }
+    );
+  };
+
+  const handleAddMealIdea = async (e) => {
+    e.preventDefault();
+    const title = newMealIdeaTitle.trim();
+    if (!title) return;
+    const cooks = newMealIdeaCooks.trim() || userDisplayName;
+    const newIdea = {
+      id: `idea-${Date.now()}`,
+      title,
+      cooks,
+      assignedSlotId: newMealIdeaSlotId || ""
+    };
+    const nextList = [...mealIdeas, newIdea];
+    await saveMealIdeasList(nextList);
+
+    if (newMealIdeaSlotId) {
+      const slotMeal = meals.find((m) => m.id === newMealIdeaSlotId);
+      if (slotMeal) {
+        await setDoc(
+          doc(db, "meals", slotMeal.id),
+          {
+            day: slotMeal.day,
+            slot: slotMeal.slot,
+            menu: title,
+            cooks,
+            updatedAt: Date.now()
+          },
+          { merge: true }
+        );
+      }
+    }
+    setNewMealIdeaTitle("");
+    setNewMealIdeaCooks("");
+    setNewMealIdeaSlotId("");
+  };
+
+  const updateMealIdeaCooks = async (ideaId, nextCooks) => {
+    const nextList = mealIdeas.map((idea) =>
+      idea.id === ideaId ? { ...idea, cooks: nextCooks } : idea
+    );
+    await saveMealIdeasList(nextList);
+
+    const updatedIdea = nextList.find((i) => i.id === ideaId);
+    if (updatedIdea?.assignedSlotId) {
+      const slotMeal = meals.find((m) => m.id === updatedIdea.assignedSlotId);
+      if (slotMeal) {
+        await updateDoc(doc(db, "meals", slotMeal.id), {
+          cooks: nextCooks,
+          updatedAt: Date.now()
+        }).catch(() => {});
+      }
+    }
+  };
+
+  const assignMealIdeaToSlot = async (idea, slotId) => {
+    const prevSlotId = idea.assignedSlotId;
+    const nextList = mealIdeas.map((i) =>
+      i.id === idea.id ? { ...i, assignedSlotId: slotId } : i
+    );
+    await saveMealIdeasList(nextList);
+
+    if (prevSlotId && prevSlotId !== slotId) {
+      const prevMeal = meals.find((m) => m.id === prevSlotId);
+      if (prevMeal && prevMeal.menu === idea.title) {
+        await updateDoc(doc(db, "meals", prevMeal.id), {
+          menu: "",
+          cooks: "",
+          updatedAt: Date.now()
+        }).catch(() => {});
+      }
+    }
+
+    if (slotId) {
+      const targetMeal = meals.find((m) => m.id === slotId);
+      if (targetMeal) {
+        await setDoc(
+          doc(db, "meals", targetMeal.id),
+          {
+            day: targetMeal.day,
+            slot: targetMeal.slot,
+            menu: idea.title,
+            cooks: idea.cooks || "À définir",
+            updatedAt: Date.now()
+          },
+          { merge: true }
+        );
+      }
+    }
+  };
+
+  const deleteMealIdea = async (ideaId) => {
+    const nextList = mealIdeas.filter((i) => i.id !== ideaId);
+    await saveMealIdeasList(nextList);
+  };
+
+  // ==================== GROCERIES ACTIONS (WHO DOES WHAT & DONE STATUS) ====================
   const handleAddGrocery = async (e) => {
     e.preventDefault();
     const label = newGroceryLabel.trim();
@@ -958,7 +1050,7 @@ export default function App() {
     await addDoc(collection(db, "groceries"), {
       label,
       category: newGroceryCategory,
-      broughtBy: newGroceryWho.trim() || userDisplayName,
+      broughtBy: newGroceryWho.trim() || "À définir",
       checked: false,
       createdBy: userDisplayName,
       createdAt: Date.now()
@@ -970,6 +1062,12 @@ export default function App() {
   const toggleGroceryChecked = async (item) => {
     await updateDoc(doc(db, "groceries", item.id), {
       checked: !item.checked
+    });
+  };
+
+  const updateGroceryAssignee = async (item, newAssignee) => {
+    await updateDoc(doc(db, "groceries", item.id), {
+      broughtBy: newAssignee
     });
   };
 
@@ -986,7 +1084,7 @@ export default function App() {
     await addDoc(collection(db, "activities"), {
       title,
       category: newActCat,
-      day: newActDay.trim() || "À caler",
+      day: newActDay.trim() || "Autour du gîte",
       duration: "Libre",
       description: newActDesc.trim() || "Proposé pour le groupe !",
       imageUrl: newActImg.trim() || fallbackImg,
@@ -1002,6 +1100,7 @@ export default function App() {
     setNewActDesc("");
     setNewActImg("");
     setNewActWebsiteUrl("");
+    setNewActDay("");
   };
 
   const voteActivityHot = async (act) => {
@@ -1030,14 +1129,17 @@ export default function App() {
     });
   };
 
-  const syncAll22Activities = async () => {
+  const syncAllActivities = async () => {
+    for (const remId of REMOVED_HOME_ACTIVITY_IDS) {
+      await deleteDoc(doc(db, "activities", remId)).catch(() => {});
+    }
     for (const a of INITIAL_ACTIVITIES) {
       await setDoc(
         doc(db, "activities", a.id),
         {
           title: a.title,
           category: a.category,
-          day: a.day,
+          day: a.distanceFromGite || a.day,
           duration: a.duration,
           description: a.description,
           imageUrl: a.imageUrl,
@@ -1069,7 +1171,7 @@ export default function App() {
       <div className="auth-wrapper">
         <div style={{ textAlign: "center" }}>
           <Sparkles size={38} color="#f59e0b" style={{ marginBottom: "0.75rem" }} />
-          <h2 className="font-display">Chargement du Château des Cœurs…</h2>
+          <h2 className="font-display">Chargement du Gîte de Maleville…</h2>
         </div>
       </div>
     );
@@ -1083,7 +1185,7 @@ export default function App() {
           <div style={{ position: "relative", height: "185px" }}>
             <img
               src={GITE_INFO.heroPhotos[0].url}
-              alt="Château des Cœurs Maleville"
+              alt="Gîte Chez Aline & SPA Maleville"
               style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.65)" }}
             />
             <div
@@ -1102,7 +1204,7 @@ export default function App() {
               </span>
               <h1 style={{ fontSize: "1.55rem", fontWeight: 800 }}>Nouvel An 2027 entre Potes</h1>
               <p style={{ fontSize: "0.85rem", color: "#cbd5e1" }}>
-                Château des Cœurs • Maleville (Aveyron)
+                Chez Aline & SPA • Maleville (Aveyron)
               </p>
             </div>
           </div>
@@ -1284,7 +1386,7 @@ export default function App() {
               Nouvel An 2027 • Maleville
             </div>
             <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-              Château des Cœurs • 26 Déc. – 2 Janv.
+              Chez Aline & SPA • 26 Déc. – 2 Janv.
             </div>
           </div>
         </div>
@@ -1314,9 +1416,9 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem", flexWrap: "wrap" }}>
               <div>
                 <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginBottom: "0.45rem" }}>
-                  <span className="badge badge-gold">🏰 {GITE_INFO.rating}</span>
+                  <span className="badge badge-gold">🏡 {GITE_INFO.rating}</span>
                   <span className="badge badge-emerald">
-                    👨‍👩‍👧‍👦 {totalAdultsCount} adultes & {totalKidsCount} enfants
+                    👨‍👩‍👧‍👦 {totalAdultsCount} adultes & {totalKidsCount} enfants ({families.length} familles)
                   </span>
                   <span className="badge badge-sky">🏊 Piscine 26°C • Hammam • Sauna • Cinéma</span>
                 </div>
@@ -1358,7 +1460,7 @@ export default function App() {
         <div className="countdown-strip">
           <div className="countdown-box">
             <div className="countdown-label">
-              <Car size={15} /> Arrivée au Château (Sam. 26 Déc. 16h)
+              <Car size={15} /> Arrivée au Gîte (Sam. 26 Déc. 16h)
             </div>
             <div className="countdown-digits">
               <div className="digit-pill">
@@ -1424,21 +1526,21 @@ export default function App() {
           className={`tab-btn ${activeTab === "home" ? "active" : ""}`}
           onClick={() => setActiveTab("home")}
         >
-          <Home size={17} /> Accueil & WhatsApp
+          <Calendar size={17} /> Accueil & Agenda
         </button>
         <button
           type="button"
           className={`tab-btn ${activeTab === "rooms" ? "active" : ""}`}
           onClick={() => setActiveTab("rooms")}
         >
-          <BedDouble size={17} /> Familles & Chambres (10)
+          <BedDouble size={17} /> Familles ({families.length}) & Chambres (10)
         </button>
         <button
           type="button"
           className={`tab-btn ${activeTab === "activities" ? "active" : ""}`}
           onClick={() => setActiveTab("activities")}
         >
-          <Flame size={17} /> Activités ({activities.length})
+          <Flame size={17} /> Activités ({activities.length}) & Carte
         </button>
         <button
           type="button"
@@ -1463,7 +1565,7 @@ export default function App() {
         </button>
       </nav>
 
-      {/* ==================== TAB 1: ACCUEIL, RACCOURCIS & WHATSAPP DIGEST ==================== */}
+      {/* ==================== TAB 1: ACCUEIL, AGENDA DE LA SEMAINE & ARRIVÉES / DÉPARTS ==================== */}
       {activeTab === "home" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {/* Quick Actions Strip */}
@@ -1520,133 +1622,222 @@ export default function App() {
             </div>
           </div>
 
-          {/* WhatsApp Group Discussions Digest & Interactive Poll */}
-          <div className="card" style={{ borderColor: "rgba(37, 211, 102, 0.35)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.9rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-                <MessageCircle size={22} color="#25D366" />
-                <div>
-                  <h3 style={{ fontSize: "1.12rem", fontWeight: 800 }}>
-                    💬 Récap des discussions du groupe WhatsApp « {GITE_INFO.whatsappDigest.groupName} »
-                  </h3>
-                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                    Les infos clés extraites de la conversation pour que personne ne perde le fil
-                  </p>
-                </div>
+          {/* AGENDA DE LA SEMAINE (SAM. 26 DÉC. -> SAM. 2 JANV.) */}
+          <div className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.6rem", marginBottom: "1rem" }}>
+              <div>
+                <h2 style={{ fontSize: "1.22rem", fontWeight: 800 }}>
+                  📅 Agenda de la Semaine (Sam. 26 Déc. → Sam. 2 Janv.)
+                </h2>
+                <p style={{ fontSize: "0.84rem", color: "var(--text-muted)" }}>
+                  Vue jour par jour des arrivées, départs et repas programmés par le groupe
+                </p>
               </div>
-              <a
-                href={links.tricountUrl || GITE_INFO.tricountUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="badge badge-emerald"
-                style={{ textDecoration: "none", padding: "0.35rem 0.75rem" }}
+              <button
+                type="button"
+                onClick={() => setActiveTab("meals")}
+                className="btn btn-secondary"
+                style={{ fontSize: "0.78rem", padding: "0.4rem 0.75rem" }}
               >
-                Ouvrir le Tricount <ExternalLink size={12} />
-              </a>
+                <Utensils size={14} /> Gérer les repas
+              </button>
             </div>
 
-            <div className="grid-2" style={{ alignItems: "start" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-                {GITE_INFO.whatsappDigest.highlights.map((item, i) => (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(195px, 1fr))", gap: "0.75rem" }}>
+              {STAY_DAYS.map((d) => {
+                const arrivingFams = families.filter((f) => (f.arrivalDate || "Sam. 26 Déc.") === d.label);
+                const departingFams = families.filter((f) => (f.departureDate || "Sam. 2 Janv.") === d.label);
+                const dayMeals = meals.filter((m) => m.day === d.label && m.menu && m.menu.trim() !== "");
+                const isNYE = d.id === "2026-12-31";
+
+                return (
                   <div
-                    key={i}
+                    key={d.id}
                     style={{
-                      padding: "0.65rem 0.85rem",
-                      background: "rgba(15, 23, 42, 0.65)",
-                      borderRadius: "10px",
-                      border: "1px solid var(--border-subtle)",
-                      fontSize: "0.86rem"
+                      padding: "0.85rem",
+                      borderRadius: "12px",
+                      background: isNYE
+                        ? "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(15, 23, 42, 0.9))"
+                        : "rgba(15, 23, 42, 0.65)",
+                      border: isNYE ? "1px solid #f59e0b" : "1px solid var(--border-subtle)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.45rem"
                     }}
                   >
-                    {item}
-                  </div>
-                ))}
-                <div
-                  style={{
-                    padding: "0.65rem 0.85rem",
-                    background: "rgba(245, 158, 11, 0.1)",
-                    borderRadius: "10px",
-                    border: "1px solid rgba(245, 158, 11, 0.3)",
-                    fontSize: "0.83rem",
-                    color: "#fde68a"
-                  }}
-                >
-                  💳 <strong>Rappel virement acompte (100 € / adulte) :</strong> par virement Fortuneo ou PayPal entre proches à{" "}
-                  <strong>baptiste.bachelart@gmail.com</strong> (06 36 36 54 07). Tu peux cocher ton statut dans l'onglet{" "}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("rooms")}
-                    style={{ background: "none", border: "none", color: "#38bdf8", textDecoration: "underline", cursor: "pointer", fontWeight: 700 }}
-                  >
-                    Familles & Chambres
-                  </button>
-                  .
-                </div>
-              </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span className={`badge ${isNYE ? "badge-gold" : "badge-sky"}`}>{d.label}</span>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#f8fafc" }}>{d.subtitle}</div>
 
-              {/* Catering / Evening Vote from WhatsApp */}
-              <div
-                style={{
-                  background: "rgba(15, 23, 42, 0.7)",
-                  padding: "0.95rem",
-                  borderRadius: "12px",
-                  border: "1px solid var(--border-gold)"
-                }}
-              >
-                <div style={{ fontWeight: 800, fontSize: "0.95rem", marginBottom: "0.3rem", color: "#fbbf24" }}>
-                  {GITE_INFO.whatsappDigest.cateringDebateTitle}
-                </div>
-                <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
-                  Lulu & Maud ont lancé le débat sur WhatsApp pour faire un soir sans cuisiner. Clique sur ce qui te tente :
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-                  {GITE_INFO.whatsappDigest.cateringOptions.map((opt) => {
-                    const voters = Array.isArray(cateringPollVotes[opt.id]) ? cateringPollVotes[opt.id] : [];
-                    const iVoted = voters.includes(userDisplayName);
-                    return (
-                      <div
-                        key={opt.id}
-                        style={{
-                          padding: "0.65rem 0.75rem",
-                          borderRadius: "10px",
-                          background: iVoted ? "rgba(245, 158, 11, 0.14)" : "rgba(30, 41, 59, 0.7)",
-                          border: iVoted ? "1px solid #f59e0b" : "1px solid var(--border-subtle)",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          gap: "0.6rem"
-                        }}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.87rem" }}>{opt.label}</div>
-                          <div style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{opt.desc}</div>
-                          {voters.length > 0 && (
-                            <div style={{ fontSize: "0.75rem", color: "#34d399", marginTop: "0.2rem" }}>
-                              🔥 Chauds ({voters.length}) : {voters.join(", ")}
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleCateringOptionVote(opt.id)}
-                          className={`btn ${iVoted ? "btn-primary" : "btn-secondary"}`}
-                          style={{ padding: "0.4rem 0.7rem", fontSize: "0.78rem", whiteSpace: "nowrap" }}
-                        >
-                          {iVoted ? "🔥 Chaud !" : "+ Voter"}
-                        </button>
+                    {arrivingFams.length > 0 && (
+                      <div style={{ fontSize: "0.77rem", color: "#34d399", background: "rgba(16, 185, 129, 0.1)", padding: "0.35rem 0.5rem", borderRadius: "8px" }}>
+                        🟢 <strong>Arrivées ({arrivingFams.length}) :</strong>{" "}
+                        {arrivingFams
+                          .map((f) => `${(f.adults || []).join("&")}${f.arrivalTime && f.arrivalTime !== "À préciser" ? ` (${f.arrivalTime})` : ""}`)
+                          .join(", ")}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    )}
+
+                    {departingFams.length > 0 && (
+                      <div style={{ fontSize: "0.77rem", color: "#fda4af", background: "rgba(244, 63, 94, 0.1)", padding: "0.35rem 0.5rem", borderRadius: "8px" }}>
+                        🔴 <strong>Départs ({departingFams.length}) :</strong>{" "}
+                        {departingFams
+                          .map((f) => `${(f.adults || []).join("&")}${f.departureTime && f.departureTime !== "À préciser" ? ` (${f.departureTime})` : ""}`)
+                          .join(", ")}
+                      </div>
+                    )}
+
+                    {dayMeals.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "0.2rem" }}>
+                        {dayMeals.map((m) => (
+                          <div key={m.id} style={{ fontSize: "0.76rem", color: "#fde68a", background: "rgba(245, 158, 11, 0.12)", padding: "0.3rem 0.5rem", borderRadius: "6px" }}>
+                            🍽️ <strong>{m.slot} :</strong> {m.menu} {m.cooks ? `(${m.cooks})` : ""}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: "0.75rem", color: "#64748b", fontStyle: "italic", marginTop: "auto" }}>
+                        Repas libre / non défini
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
+          {/* QUI ARRIVE QUAND & REPART QUAND (TABLEAU INTERACTIF DES 12 FAMILLES) */}
+          <div className="card card-gold">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
+              <div>
+                <h2 style={{ fontSize: "1.22rem", fontWeight: 800 }}>
+                  🚗 Arrivées & Départs : Qui arrive quand et repart quand ?
+                </h2>
+                <p style={{ fontSize: "0.84rem", color: "#cbd5e1" }}>
+                  Modifie directement le jour et l'heure d'arrivée / de départ de ta famille ainsi que tes infos voiture / Drive (Villefranche est à 10 min) :
+                </p>
+              </div>
+              <span className="badge badge-emerald">
+                {families.length} Familles • {totalAdultsCount} adultes & {totalKidsCount} enfants
+              </span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              {families.map((fam) => {
+                const kids = Array.isArray(fam.children) ? fam.children : [];
+                return (
+                  <div
+                    key={fam.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "minmax(200px, 1.3fr) minmax(210px, 1fr) minmax(210px, 1fr) minmax(170px, 0.9fr)",
+                      gap: "0.6rem",
+                      alignItems: "center",
+                      padding: "0.75rem 0.9rem",
+                      background: "rgba(15, 23, 42, 0.72)",
+                      borderRadius: "12px",
+                      border: "1px solid var(--border-subtle)"
+                    }}
+                  >
+                    {/* Couple & Kids */}
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "#fbbf24" }}>
+                        💑 {(fam.adults || []).join(" & ") || fam.coupleName}
+                      </div>
+                      <div style={{ fontSize: "0.76rem", color: "#94a3b8", display: "flex", gap: "0.35rem", flexWrap: "wrap", marginTop: "0.15rem" }}>
+                        {fam.origin && <span>📍 {fam.origin}</span>}
+                        {kids.length > 0 && (
+                          <span style={{ color: "#7dd3fc" }}>
+                            • 👶 {kids.map((k) => `${k.name}${k.age ? ` (${k.age})` : ""}`).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Arrivée (Jour + Heure) */}
+                    <div>
+                      <div style={{ fontSize: "0.7rem", color: "#34d399", fontWeight: 700, marginBottom: "0.2rem" }}>
+                        🟢 ARRIVÉE AU GÎTE
+                      </div>
+                      <div style={{ display: "flex", gap: "0.35rem" }}>
+                        <select
+                          className="select"
+                          style={{ padding: "0.35rem 0.45rem", fontSize: "0.78rem", flex: 1 }}
+                          value={fam.arrivalDate || "Sam. 26 Déc."}
+                          onChange={(e) => updateFamilySchedule(fam, "arrivalDate", e.target.value)}
+                        >
+                          {STAY_DAYS.map((d) => (
+                            <option key={d.id} value={d.label}>
+                              {d.label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          className="input"
+                          style={{ padding: "0.35rem 0.5rem", fontSize: "0.78rem", width: "92px" }}
+                          placeholder="Ex: 16h30"
+                          value={fam.arrivalTime || ""}
+                          onChange={(e) => updateFamilySchedule(fam, "arrivalTime", e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Départ (Jour + Heure) */}
+                    <div>
+                      <div style={{ fontSize: "0.7rem", color: "#fda4af", fontWeight: 700, marginBottom: "0.2rem" }}>
+                        🔴 DÉPART DU GÎTE
+                      </div>
+                      <div style={{ display: "flex", gap: "0.35rem" }}>
+                        <select
+                          className="select"
+                          style={{ padding: "0.35rem 0.45rem", fontSize: "0.78rem", flex: 1 }}
+                          value={fam.departureDate || "Sam. 2 Janv."}
+                          onChange={(e) => updateFamilySchedule(fam, "departureDate", e.target.value)}
+                        >
+                          {STAY_DAYS.map((d) => (
+                            <option key={d.id} value={d.label}>
+                              {d.label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          className="input"
+                          style={{ padding: "0.35rem 0.5rem", fontSize: "0.78rem", width: "92px" }}
+                          placeholder="Ex: 11h00"
+                          value={fam.departureTime || ""}
+                          onChange={(e) => updateFamilySchedule(fam, "departureTime", e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Transport / Drive note */}
+                    <div>
+                      <div style={{ fontSize: "0.7rem", color: "#38bdf8", fontWeight: 700, marginBottom: "0.2rem" }}>
+                        🚙 TRANSPORT / DRIVE
+                      </div>
+                      <input
+                        type="text"
+                        className="input"
+                        style={{ padding: "0.35rem 0.55rem", fontSize: "0.78rem" }}
+                        placeholder="Voiture, dispo Drive..."
+                        value={fam.transport || ""}
+                        onChange={(e) => updateFamilySchedule(fam, "transport", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* GITE SUMMARY & PHOTO TOUR */}
           <div className="grid-2">
-            {/* Highlights of the Castle */}
             <div className="card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>🏰 Le Château des Cœurs en bref</h3>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>🏡 Notre Gîte « Chez Aline & SPA » en bref</h3>
                 <a
                   href={GITE_INFO.airbnbUrl}
                   target="_blank"
@@ -1658,7 +1849,7 @@ export default function App() {
                 </a>
               </div>
               <p style={{ fontSize: "0.88rem", color: "#cbd5e1", marginBottom: "0.9rem" }}>
-                Demeure du XVIIIe siècle sur 3 étages privatisée pour notre groupe du{" "}
+                Grande demeure du XVIIIe siècle sur 3 étages privatisée pour notre groupe du{" "}
                 <strong>samedi 26 déc. (16h)</strong> au <strong>samedi 2 janv. (16h)</strong>.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -1679,121 +1870,53 @@ export default function App() {
               </div>
             </div>
 
-            {/* Arrivals & Carpool / Drive */}
+            {/* Photo Tour of the Gite */}
             <div className="card">
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.4rem" }}>
-                🚗 Arrivées & Covoit' (Sam. 26 Déc.)
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.85rem" }}>
+                ✨ Aperçu des espaces de la Maison
               </h3>
-              <p style={{ fontSize: "0.83rem", color: "var(--text-muted)", marginBottom: "0.9rem" }}>
-                Indique vers quelle heure tu arrives et si tu passes au Drive (Leclerc / Carrefour Villefranche à 10 min) :
-              </p>
-
-              <form onSubmit={saveMyArrival} style={{ display: "flex", flexDirection: "column", gap: "0.65rem", marginBottom: "1rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="Heure d'arrivée (ex: Sam. 16h30)"
-                    value={myArrivalTime}
-                    onChange={(e) => setMyArrivalTime(e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="Infos (ex: Voiture Lyon, dispo Drive)"
-                    value={myTransport}
-                    onChange={(e) => setMyTransport(e.target.value)}
-                  />
-                </div>
-                <button type="submit" className="btn btn-primary" style={{ alignSelf: "flex-start" }}>
-                  {arrivalSaved ? "✅ Enregistré !" : "Mettre à jour mon arrivée"}
-                </button>
-              </form>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", maxHeight: "220px", overflowY: "auto" }}>
-                {members.length === 0 ? (
-                  <div style={{ fontSize: "0.84rem", color: "var(--text-muted)" }}>
-                    Aucun membre connecté pour l'instant.
-                  </div>
-                ) : (
-                  members.map((m) => (
-                    <div
-                      key={m.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "0.55rem 0.75rem",
-                        background: "rgba(15, 23, 42, 0.55)",
-                        borderRadius: "10px",
-                        fontSize: "0.85rem"
-                      }}
-                    >
-                      <div>
-                        <strong>{m.firstName}</strong>{" "}
-                        {m.familyGroup && (
-                          <span className="badge" style={{ marginLeft: "0.3rem" }}>
-                            {m.familyGroup}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ color: "#cbd5e1", textAlign: "right", fontSize: "0.8rem" }}>
-                        <span>{m.arrivalTime || "Heure à préciser"}</span>
-                        {m.transport && <span style={{ color: "#94a3b8" }}> • {m.transport}</span>}
-                      </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(185px, 1fr))", gap: "0.75rem" }}>
+                {GITE_INFO.heroPhotos.map((p, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setHeroIndex(idx)}
+                    style={{
+                      cursor: "pointer",
+                      borderRadius: "12px",
+                      overflow: "hidden",
+                      border: heroIndex === idx ? "2px solid #f59e0b" : "1px solid var(--border-subtle)",
+                      background: "#0f172a"
+                    }}
+                  >
+                    <img
+                      src={p.url}
+                      alt={p.caption}
+                      loading="lazy"
+                      style={{ width: "100%", height: "115px", objectFit: "cover", display: "block" }}
+                    />
+                    <div style={{ padding: "0.45rem 0.6rem", fontSize: "0.76rem", fontWeight: 600 }}>
+                      {p.caption}
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Photo Tour of the Gite */}
-          <div className="card">
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.85rem" }}>
-              ✨ Aperçu des espaces du Château des Cœurs
-            </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: "0.85rem" }}>
-              {GITE_INFO.heroPhotos.map((p, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setHeroIndex(idx)}
-                  style={{
-                    cursor: "pointer",
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                    border: heroIndex === idx ? "2px solid #f59e0b" : "1px solid var(--border-subtle)",
-                    background: "#0f172a"
-                  }}
-                >
-                  <img
-                    src={p.url}
-                    alt={p.caption}
-                    loading="lazy"
-                    style={{ width: "100%", height: "135px", objectFit: "cover", display: "block" }}
-                  />
-                  <div style={{ padding: "0.5rem 0.65rem", fontSize: "0.8rem", fontWeight: 600 }}>
-                    {p.caption}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ==================== TAB 2: FAMILLES (COUPLES + ENFANTS) & 10 CHAMBRES ==================== */}
+      {/* ==================== TAB 2: FAMILLES (LES 12 COUPLES + ENFANTS) & 10 CHAMBRES ==================== */}
       {activeTab === "rooms" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {/* SECTION 1: LES FAMILLES (COUPLES + ENFANTS) */}
+          {/* SECTION 1: LES 12 FAMILLES (COUPLES + ENFANTS) */}
           <div className="card card-gold">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
               <div>
                 <h2 style={{ fontSize: "1.3rem", fontWeight: 800 }}>
-                  👨‍👩‍👧‍👦 Les Familles : Couples & Enfants ({totalAdultsCount} adultes & {totalKidsCount} enfants)
+                  👨‍👩‍👧‍👦 Toutes les Familles ({families.length} familles • {totalAdultsCount} adultes & {totalKidsCount} enfants)
                 </h2>
                 <p style={{ fontSize: "0.86rem", color: "#cbd5e1" }}>
-                  Formez/ajustez les couples, ajoutez les enfants et choisissez directement la <strong>chambre des parents</strong> et la <strong>chambre des enfants</strong> dans les menus déroulants : les 10 chambres ci-dessous se mettent à jour toutes seules !
+                  Toutes les familles du groupe sont listées ci-dessous. Choisissez directement la <strong>chambre des parents</strong> et la <strong>chambre des enfants</strong> dans les menus déroulants : les 10 chambres se mettent à jour toutes seules !
                 </p>
               </div>
             </div>
@@ -1823,7 +1946,7 @@ export default function App() {
                           onClick={() => openFamilyEditor(fam)}
                           className="btn btn-secondary"
                           style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}
-                          title="Modifier les prénoms du couple ou choisir un couple d'amis"
+                          title="Modifier les prénoms du couple"
                         >
                           <Edit3 size={13} /> Modifier
                         </button>
@@ -1999,7 +2122,7 @@ export default function App() {
               <input
                 type="text"
                 className="input"
-                placeholder="Adulte 1 (ex: Morgane)"
+                placeholder="Adulte 1"
                 value={newFamAdult1}
                 onChange={(e) => setNewFamAdult1(e.target.value)}
                 required
@@ -2007,34 +2130,34 @@ export default function App() {
               <input
                 type="text"
                 className="input"
-                placeholder="Adulte 2 (ex: Jean-Philippe)"
+                placeholder="Adulte 2"
                 value={newFamAdult2}
                 onChange={(e) => setNewFamAdult2(e.target.value)}
               />
               <input
                 type="text"
                 className="input"
-                placeholder="Enfants (ex: France 7a, Briac 6a)"
+                placeholder="Enfants (ex: Léo 5a)"
                 value={newFamKidsText}
                 onChange={(e) => setNewFamKidsText(e.target.value)}
               />
               <input
                 type="text"
                 className="input"
-                placeholder="Ville / Team (ex: Team Nice)"
+                placeholder="Ville / Team"
                 value={newFamOrigin}
                 onChange={(e) => setNewFamOrigin(e.target.value)}
               />
               <button type="submit" className="btn btn-primary">
-                <Plus size={16} /> Ajouter un Couple / Famille
+                <Plus size={16} /> Ajouter une Famille
               </button>
             </form>
           </div>
 
-          {/* SECTION 2: LES 10 CHAMBRES DU CHÂTEAU */}
+          {/* SECTION 2: LES 10 CHAMBRES DU GÎTE */}
           <div className="card">
             <h2 style={{ fontSize: "1.22rem", fontWeight: 800, marginBottom: "0.3rem" }}>
-              🏰 Vue des 10 Chambres du Château des Cœurs
+              🛏️ Vue des 10 Chambres du Gîte
             </h2>
             <p style={{ fontSize: "0.84rem", color: "var(--text-muted)", marginBottom: "1rem" }}>
               6 chambres doubles adultes + 4 chambres lits simples / dortoir enfants (19 lits au total, draps et serviettes de toilette fournis).
@@ -2148,40 +2271,38 @@ export default function App() {
         </div>
       )}
 
-      {/* ==================== TAB 3: 26 ACTIVITÉS ILLUSTRÉES (CHAUD 🔥 / PAS CHAUD ❄️) ==================== */}
+      {/* ==================== TAB 3: ACTIVITÉS AUTOUR DU GÎTE & CARTE INTERACTIVE ==================== */}
       {activeTab === "activities" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div className="card card-gold">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.85rem" }}>
               <div>
                 <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: "0.25rem" }}>
-                  🔥 Activités autour de Maleville : Chaud ou Pas Chaud ?
+                  🔥 Activités & Sorties autour de Maleville : Chaud ou Pas Chaud ?
                 </h2>
                 <p style={{ fontSize: "0.86rem", color: "#cbd5e1" }}>
-                  Spéléo à 13°C, VTT / VTT électrique, Via Ferrata & tyrolienne, trail, cheval/poney, tir à l'arc, randos, cités médiévales, grottes, aligot géant, piscine 26°C & spa : consulte le site de chaque activité et vote{" "}
-                  <strong>« 🔥 Chaud »</strong> ou <strong>« ❄️ Pas chaud »</strong> !
+                  Spéléo à 13°C, VTT / VTT électrique, Via Ferrata & tyrolienne, trail, cheval/poney, tir à l'arc, randos, cités médiévales, vignobles de Marcillac & grands crus : chaque carte indique la <strong>distance depuis notre gîte</strong>, le lien du site et une carte interactive se trouve juste en dessous !
                 </p>
               </div>
               <button
                 type="button"
-                onClick={syncAll22Activities}
+                onClick={syncAllActivities}
                 className="btn btn-secondary"
                 style={{ fontSize: "0.78rem", padding: "0.42rem 0.75rem" }}
-                title="Réinitialiser / synchroniser les 26 activités illustrées avec liens"
+                title="Synchroniser les activités extérieures et nettoyer les anciennes activités maison"
               >
-                <RefreshCw size={14} /> Synchroniser les 26 idées
+                <RefreshCw size={14} /> Synchroniser les activités ({INITIAL_ACTIVITIES.length})
               </button>
             </div>
 
-            {/* Category filter pills */}
+            {/* Category filter pills (without at-home activities) */}
             <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginBottom: "1rem" }}>
               {[
                 "Toutes",
                 "Sport & Aventure",
                 "Rando & Nature",
                 "Visite & Patrimoine",
-                "Terroir & Gastronomie",
-                "Sur place au Château"
+                "Terroir & Gastronomie"
               ].map((cat) => (
                 <button
                   key={cat}
@@ -2220,13 +2341,12 @@ export default function App() {
                 <option value="Sport & Aventure">🏇 Sport & Aventure</option>
                 <option value="Rando & Nature">🥾 Rando & Nature</option>
                 <option value="Visite & Patrimoine">🏰 Visite & Patrimoine</option>
-                <option value="Terroir & Gastronomie">🧀 Terroir & Gastronomie</option>
-                <option value="Sur place au Château">🏡 Sur place au Château</option>
+                <option value="Terroir & Gastronomie">🍷 Terroir & Gastronomie</option>
               </select>
               <input
                 type="text"
                 className="input"
-                placeholder="Distance / Jour (ex: À 20 min)"
+                placeholder="Distance du gîte (ex: 15 km • 20 min)"
                 value={newActDay}
                 onChange={(e) => setNewActDay(e.target.value)}
               />
@@ -2257,7 +2377,7 @@ export default function App() {
             </form>
           </div>
 
-          {/* Grid of Activity Cards with Background Image, Website Link & Hot/Cold Voting */}
+          {/* Grid of Activity Cards — ONLY Typology Badge + Distance from Gîte */}
           <div className="grid-2">
             {filteredActivities.map((act) => {
               const hotVotes = Array.isArray(act.votesHot) ? act.votesHot : Array.isArray(act.votes) ? act.votes : [];
@@ -2265,6 +2385,7 @@ export default function App() {
               const iVotedHot = hotVotes.includes(userDisplayName);
               const iVotedCold = coldVotes.includes(userDisplayName);
               const bgImg = act.imageUrl || DEFAULT_CATEGORY_IMAGES[act.category] || DEFAULT_CATEGORY_IMAGES["Sport & Aventure"];
+              const distLabel = act.distanceFromGite || act.day || "Autour de Maleville";
 
               return (
                 <div
@@ -2273,30 +2394,24 @@ export default function App() {
                   style={{ backgroundImage: `url("${bgImg}")` }}
                 >
                   <div className="activity-bg-overlay">
-                    {/* Top badges */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {/* ONLY the activity typology badge as requested */}
+                    <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-start" }}>
                       <span className="badge badge-gold" style={{ background: "rgba(15, 23, 42, 0.88)", backdropFilter: "blur(6px)" }}>
                         {act.category}
                       </span>
-                      <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                        {act.day && (
-                          <span className="badge badge-sky" style={{ background: "rgba(15, 23, 42, 0.88)", backdropFilter: "blur(6px)" }}>
-                            📍 {act.day}
-                          </span>
-                        )}
-                        {act.duration && (
-                          <span className="badge" style={{ background: "rgba(15, 23, 42, 0.88)", color: "#e2e8f0" }}>
-                            ⏱️ {act.duration}
-                          </span>
-                        )}
-                      </div>
                     </div>
 
-                    {/* Content, Website Link & Votes at bottom */}
+                    {/* Content, Distance from Gîte, Website Link & Votes at bottom */}
                     <div style={{ marginTop: "auto" }}>
-                      <h3 style={{ fontSize: "1.12rem", fontWeight: 800, marginBottom: "0.35rem", textShadow: "0 2px 6px rgba(0,0,0,0.85)" }}>
+                      <h3 style={{ fontSize: "1.12rem", fontWeight: 800, marginBottom: "0.25rem", textShadow: "0 2px 6px rgba(0,0,0,0.85)" }}>
                         {act.title}
                       </h3>
+
+                      {/* Distance from our lodging */}
+                      <div style={{ fontSize: "0.82rem", color: "#38bdf8", fontWeight: 700, marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <Car size={15} /> Distance du gîte : {distLabel}
+                      </div>
+
                       <p style={{ fontSize: "0.84rem", color: "#e2e8f0", marginBottom: "0.7rem", lineHeight: 1.45 }}>
                         {act.description}
                       </p>
@@ -2361,78 +2476,126 @@ export default function App() {
               );
             })}
           </div>
+
+          {/* INTERACTIVE LEAFLET MAP BELOW ACTIVITIES */}
+          <div className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.85rem" }}>
+              <div>
+                <h3 style={{ fontSize: "1.18rem", fontWeight: 800 }}>
+                  🗺️ Carte Interactive des Activités autour de Notre Gîte (Maleville)
+                </h3>
+                <p style={{ fontSize: "0.83rem", color: "var(--text-muted)" }}>
+                  Le marqueur doré <strong>🏡</strong> indique notre gîte à Maleville. Clique sur n'importe quel point pour voir l'activité, sa distance exacte et son site web :
+                </p>
+              </div>
+              <span className="badge badge-sky">
+                {filteredActivities.filter((a) => typeof a.lat === "number").length} lieux géolocalisés
+              </span>
+            </div>
+
+            <ActivitiesMap activities={filteredActivities} />
+          </div>
         </div>
       )}
 
-      {/* ==================== TAB 4: REPAS & COURSES ==================== */}
+      {/* ==================== TAB 4: REPAS (AGENDA VIDE + PROPOSITIONS) & COURSES (QUI FAIT QUOI / FAIT) ==================== */}
       {activeTab === "meals" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {/* Section A: Meal Schedule */}
+          {/* Section A: Empty Meal Agenda (7 days Midi & Soir) */}
           <div className="card card-gold">
-            <div style={{ marginBottom: "1rem" }}>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: 800 }}>
-                🍽️ Tableau des Repas (26 Déc. → 2 Janv.)
-              </h2>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                Clique sur <strong>« Je cuisine ! »</strong> pour rejoindre la brigade d'un repas ou sur <strong>« Modifier »</strong> pour changer le menu.
-              </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
+              <div>
+                <h2 style={{ fontSize: "1.25rem", fontWeight: 800 }}>
+                  📅 Agenda des Repas de la Semaine (26 Déc. → 2 Janv.)
+                </h2>
+                <p style={{ fontSize: "0.85rem", color: "#cbd5e1" }}>
+                  L'agenda est volontairement vierge au départ : affectez une proposition de repas ci-dessous sur un créneau ou cliquez sur <strong>« Remplir / Modifier »</strong>.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={clearAllMealsAgenda}
+                className="btn btn-secondary"
+                style={{ fontSize: "0.78rem", padding: "0.42rem 0.75rem" }}
+                title="Remettre tous les créneaux de l'agenda à vide"
+              >
+                <RefreshCw size={14} /> Vider tout l'agenda
+              </button>
             </div>
 
             <div className="grid-2">
               {meals.map((meal) => {
                 const isNYE = meal.id.includes("12-31-soir");
+                const isEmpty = !meal.menu || meal.menu.trim() === "";
                 return (
                   <div
                     key={meal.id}
                     style={{
-                      padding: "1rem",
+                      padding: "0.95rem",
                       borderRadius: "14px",
                       background: isNYE
-                        ? "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(15, 23, 42, 0.9))"
-                        : "rgba(15, 23, 42, 0.65)",
-                      border: isNYE ? "1px solid #f59e0b" : "1px solid var(--border-subtle)",
+                        ? "linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(15, 23, 42, 0.9))"
+                        : isEmpty
+                        ? "rgba(15, 23, 42, 0.45)"
+                        : "rgba(15, 23, 42, 0.78)",
+                      border: isNYE
+                        ? "1px solid #f59e0b"
+                        : isEmpty
+                        ? "1px dashed rgba(148, 163, 184, 0.35)"
+                        : "1px solid rgba(16, 185, 129, 0.4)",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
-                      gap: "0.65rem"
+                      gap: "0.55rem"
                     }}
                   >
                     <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.35rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.35rem", gap: "0.4rem" }}>
                         <span className={`badge ${isNYE ? "badge-gold" : "badge-sky"}`}>
                           {meal.day} • {meal.slot}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => openMealEditor(meal)}
-                          className="btn btn-secondary"
-                          style={{ padding: "0.28rem 0.6rem", fontSize: "0.76rem" }}
-                        >
-                          <Edit3 size={13} /> Modifier
-                        </button>
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: "0.98rem", marginBottom: "0.3rem" }}>
-                        {meal.menu || "Menu à définir"}
-                      </div>
-                      <div style={{ fontSize: "0.83rem", color: "#cbd5e1" }}>
-                        👨‍🍳 <strong>Brigade :</strong> {meal.cooks || "À définir"}
-                      </div>
-                      {meal.notes && (
-                        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>
-                          💡 {meal.notes}
+                        <div style={{ display: "flex", gap: "0.35rem" }}>
+                          <button
+                            type="button"
+                            onClick={() => openMealEditor(meal)}
+                            className="btn btn-secondary"
+                            style={{ padding: "0.25rem 0.55rem", fontSize: "0.75rem" }}
+                          >
+                            <Edit3 size={12} /> {isEmpty ? "Remplir" : "Modifier"}
+                          </button>
+                          {!isEmpty && (
+                            <button
+                              type="button"
+                              onClick={() => clearSingleMealSlot(meal)}
+                              className="btn btn-danger"
+                              style={{ padding: "0.25rem 0.45rem", fontSize: "0.75rem" }}
+                              title="Vider ce créneau"
+                            >
+                              ×
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
-                      <button
-                        type="button"
-                        onClick={() => joinMealBrigade(meal)}
-                        className="btn btn-secondary"
-                        style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}
-                      >
-                        🙋‍♂️ Je cuisine ({userDisplayName})
-                      </button>
+                      {isEmpty ? (
+                        <div style={{ fontSize: "0.86rem", color: "#64748b", fontStyle: "italic", padding: "0.25rem 0" }}>
+                          — Créneau libre (choisir une proposition ci-dessous) —
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ fontWeight: 700, fontSize: "0.96rem", color: "#f8fafc", marginBottom: "0.25rem" }}>
+                            🍽️ {meal.menu}
+                          </div>
+                          <div style={{ fontSize: "0.82rem", color: "#34d399", fontWeight: 600 }}>
+                            👨‍🍳 Qui s'en occupe : <strong>{meal.cooks || "À définir"}</strong>
+                          </div>
+                          {meal.notes && (
+                            <div style={{ fontSize: "0.76rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
+                              💡 {meal.notes}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -2440,15 +2603,148 @@ export default function App() {
             </div>
           </div>
 
-          {/* Section B: Groceries & Regional Specialties */}
+          {/* Section B: Meal Possibilities & Proposals Board (Below the Empty Agenda) */}
+          <div className="card">
+            <div style={{ marginBottom: "1rem" }}>
+              <h2 style={{ fontSize: "1.22rem", fontWeight: 800 }}>
+                💡 Possibilités & Propositions de Repas (Qui s'en occupe ?)
+              </h2>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                Ajoute des idées de repas, indique <strong>qui s'en occupe</strong> et place-les quand vous voulez dans l'agenda ci-dessus :
+              </p>
+            </div>
+
+            {/* Form to add a new meal proposal */}
+            <form
+              onSubmit={handleAddMealIdea}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                gap: "0.6rem",
+                marginBottom: "1.15rem",
+                padding: "0.9rem",
+                background: "rgba(15, 23, 42, 0.65)",
+                borderRadius: "12px",
+                border: "1px solid var(--border-subtle)"
+              }}
+            >
+              <input
+                type="text"
+                className="input"
+                placeholder="Idée de repas (ex: Raclette, Aligot, Burgers...)"
+                value={newMealIdeaTitle}
+                onChange={(e) => setNewMealIdeaTitle(e.target.value)}
+                required
+              />
+              <input
+                type="text"
+                className="input"
+                placeholder={`Qui s'en occupe ? (ex: ${userDisplayName})`}
+                value={newMealIdeaCooks}
+                onChange={(e) => setNewMealIdeaCooks(e.target.value)}
+              />
+              <select
+                className="select"
+                value={newMealIdeaSlotId}
+                onChange={(e) => setNewMealIdeaSlotId(e.target.value)}
+              >
+                <option value="">-- Créneau agenda (optionnel) --</option>
+                {meals.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.day} ({m.slot})
+                  </option>
+                ))}
+              </select>
+              <button type="submit" className="btn btn-primary">
+                <Plus size={16} /> Ajouter la proposition
+              </button>
+            </form>
+
+            {/* List of meal ideas */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              {mealIdeas.map((idea) => (
+                <div
+                  key={idea.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(220px, 1.5fr) minmax(190px, 1fr) minmax(190px, 1fr) auto",
+                    gap: "0.65rem",
+                    alignItems: "center",
+                    padding: "0.75rem 0.9rem",
+                    borderRadius: "12px",
+                    background: idea.assignedSlotId ? "rgba(16, 185, 129, 0.1)" : "rgba(15, 23, 42, 0.65)",
+                    border: idea.assignedSlotId ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid var(--border-subtle)"
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: "0.94rem", color: "#f8fafc" }}>
+                      🍲 {idea.title}
+                    </div>
+                    {idea.assignedSlotId && (
+                      <span className="badge badge-emerald" style={{ marginTop: "0.25rem" }}>
+                        ✅ Placé dans l'agenda
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Who is in charge */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.7rem", color: "#fbbf24", fontWeight: 700, marginBottom: "0.18rem" }}>
+                      👨‍🍳 QUI S'EN OCCUPE :
+                    </label>
+                    <input
+                      type="text"
+                      className="input"
+                      style={{ padding: "0.36rem 0.55rem", fontSize: "0.8rem" }}
+                      placeholder="Prénom(s) ou couple..."
+                      value={idea.cooks || ""}
+                      onChange={(e) => updateMealIdeaCooks(idea.id, e.target.value)}
+                    />
+                  </div>
+
+                  {/* Assign to agenda slot */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.7rem", color: "#38bdf8", fontWeight: 700, marginBottom: "0.18rem" }}>
+                      📅 PLACER SUR UN JOUR :
+                    </label>
+                    <select
+                      className="select"
+                      style={{ padding: "0.36rem 0.55rem", fontSize: "0.8rem" }}
+                      value={idea.assignedSlotId || ""}
+                      onChange={(e) => assignMealIdeaToSlot(idea, e.target.value)}
+                    >
+                      <option value="">-- Non planifié --</option>
+                      {meals.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.day} • {m.slot}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteMealIdea(idea.id)}
+                    className="btn btn-danger"
+                    style={{ padding: "0.4rem 0.55rem" }}
+                    title="Supprimer cette proposition"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Section C: Groceries & Who Does What + Done Status */}
           <div className="card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
               <div>
                 <h2 style={{ fontSize: "1.2rem", fontWeight: 800 }}>
-                  🛒 Liste de Courses & Spécialités des Régions
+                  🛒 Liste de Courses : Qui s'en occupe & Statut (Fait / À faire)
                 </h2>
                 <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                  Ajoute ce qu'il faut acheter au Drive de Villefranche ou ce que tu ramènes de ta région !
+                  Affecte qui s'occupe de chaque produit et coche <strong>« Fait ✅ »</strong> dès que c'est acheté ou dans le coffre :
                 </p>
               </div>
 
@@ -2486,7 +2782,7 @@ export default function App() {
               <input
                 type="text"
                 className="input"
-                placeholder="Produit ou spécialité (ex: 4 bouteilles de Champagne...)"
+                placeholder="Produit à acheter / ramener..."
                 value={newGroceryLabel}
                 onChange={(e) => setNewGroceryLabel(e.target.value)}
                 required
@@ -2501,33 +2797,37 @@ export default function App() {
                 <option value="Enfants & Petit-déj">🥞 Enfants & Petit-déj</option>
                 <option value="Maison & Essentiels">🧻 Maison & Essentiels</option>
               </select>
-              <input
-                type="text"
-                className="input"
-                placeholder={`Qui s'en occupe ? (défaut: ${userDisplayName})`}
+              <select
+                className="select"
                 value={newGroceryWho}
                 onChange={(e) => setNewGroceryWho(e.target.value)}
-              />
+              >
+                <option value="">-- Qui s'en occupe ? (À définir) --</option>
+                {allAssigneesList.map((person) => (
+                  <option key={person} value={person}>
+                    {person}
+                  </option>
+                ))}
+              </select>
               <button type="submit" className="btn btn-primary">
                 <Plus size={16} /> Ajouter à la liste
               </button>
             </form>
 
-            {/* Grocery Items List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {/* Grocery Items List with interactive assignee & explicit Done toggle */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
               {filteredGroceries.map((item) => (
                 <div
                   key={item.id}
                   style={{
-                    display: "flex",
+                    display: "grid",
+                    gridTemplateColumns: "minmax(220px, 1.6fr) minmax(190px, 1fr) auto auto",
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "0.75rem",
+                    gap: "0.65rem",
                     padding: "0.7rem 0.9rem",
                     borderRadius: "12px",
-                    background: item.checked ? "rgba(15, 23, 42, 0.35)" : "rgba(15, 23, 42, 0.7)",
-                    border: "1px solid var(--border-subtle)",
-                    opacity: item.checked ? 0.6 : 1
+                    background: item.checked ? "rgba(16, 185, 129, 0.08)" : "rgba(15, 23, 42, 0.72)",
+                    border: item.checked ? "1px solid rgba(16, 185, 129, 0.35)" : "1px solid var(--border-subtle)"
                   }}
                 >
                   <label
@@ -2535,8 +2835,7 @@ export default function App() {
                       display: "flex",
                       alignItems: "center",
                       gap: "0.75rem",
-                      cursor: "pointer",
-                      flex: 1
+                      cursor: "pointer"
                     }}
                   >
                     <input
@@ -2550,19 +2849,54 @@ export default function App() {
                         style={{
                           fontWeight: 600,
                           fontSize: "0.92rem",
-                          textDecoration: item.checked ? "line-through" : "none"
+                          textDecoration: item.checked ? "line-through" : "none",
+                          color: item.checked ? "#94a3b8" : "#f8fafc"
                         }}
                       >
                         {item.label}
                       </div>
-                      <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginTop: "0.2rem" }}>
+                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.2rem" }}>
                         <span className="badge badge-gold">{item.category}</span>
-                        {item.broughtBy && (
-                          <span className="badge badge-emerald">Par : {item.broughtBy}</span>
-                        )}
                       </div>
                     </div>
                   </label>
+
+                  {/* Interactive Who is in charge selector */}
+                  <div>
+                    <div style={{ fontSize: "0.68rem", color: "#38bdf8", fontWeight: 700, marginBottom: "0.15rem" }}>
+                      👤 QUI S'EN OCCUPE :
+                    </div>
+                    <select
+                      className="select"
+                      style={{ padding: "0.34rem 0.5rem", fontSize: "0.79rem" }}
+                      value={item.broughtBy || "À définir"}
+                      onChange={(e) => updateGroceryAssignee(item, e.target.value)}
+                    >
+                      {!allAssigneesList.includes(item.broughtBy || "À définir") && (
+                        <option value={item.broughtBy}>{item.broughtBy}</option>
+                      )}
+                      {allAssigneesList.map((person) => (
+                        <option key={person} value={person}>
+                          {person}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Explicit Status Button (Fait / À faire) */}
+                  <button
+                    type="button"
+                    onClick={() => toggleGroceryChecked(item)}
+                    className={`btn ${item.checked ? "btn-primary" : "btn-secondary"}`}
+                    style={{
+                      padding: "0.38rem 0.7rem",
+                      fontSize: "0.78rem",
+                      background: item.checked ? "#10b981" : undefined,
+                      color: item.checked ? "#052e16" : undefined
+                    }}
+                  >
+                    {item.checked ? "✅ Fait" : "⏳ À faire"}
+                  </button>
 
                   <button
                     type="button"
@@ -2580,12 +2914,12 @@ export default function App() {
         </div>
       )}
 
-      {/* ==================== TAB 5: GOOGLE PHOTOS (2027 & SOUVENIRS 2026) ==================== */}
+      {/* ==================== TAB 5: GOOGLE PHOTOS (APERÇU GALERIE + LIENS 2027 & 2026) ==================== */}
       {activeTab === "photos" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div className="grid-2">
             {/* Album Officiel Nouvel An 2027 */}
-            <div className="card card-gold" style={{ textAlign: "center", padding: "1.85rem 1.25rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div className="card card-gold" style={{ textAlign: "center", padding: "1.6rem 1.25rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div>
                 <span className="badge badge-gold" style={{ marginBottom: "0.6rem" }}>
                   ✨ ALBUM OFFICIEL DU SÉJOUR
@@ -2593,8 +2927,8 @@ export default function App() {
                 <h2 style={{ fontSize: "1.35rem", fontWeight: 800, marginBottom: "0.45rem" }}>
                   📸 Google Photos • Nouvel An 2027
                 </h2>
-                <p style={{ fontSize: "0.88rem", color: "#cbd5e1", marginBottom: "1.25rem" }}>
-                  Toutes les photos et vidéos du Château des Cœurs à Maleville (les enfants à la piscine, les balades en Aveyron, la soirée du Réveillon) en qualité originale :
+                <p style={{ fontSize: "0.86rem", color: "#cbd5e1", marginBottom: "1.1rem" }}>
+                  L'album partagé 2027 est prêt (encore vierge en attendant le 26 décembre). Ajoutez vos photos dès le départ !
                 </p>
               </div>
               <a
@@ -2604,21 +2938,21 @@ export default function App() {
                 className="btn btn-photos"
                 style={{ padding: "0.85rem 1.4rem", fontSize: "0.95rem" }}
               >
-                <Camera size={20} /> Ouvrir l'Album Nouvel An 2027 <ExternalLink size={16} />
+                <Camera size={20} /> Ouvrir / Ajouter des photos dans l'Album 2027 <ExternalLink size={16} />
               </a>
             </div>
 
             {/* Album Souvenirs Nouvel An 2026 */}
-            <div className="card" style={{ textAlign: "center", padding: "1.85rem 1.25rem", borderColor: "rgba(56, 189, 248, 0.4)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div className="card" style={{ textAlign: "center", padding: "1.6rem 1.25rem", borderColor: "rgba(56, 189, 248, 0.4)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div>
                 <span className="badge badge-sky" style={{ marginBottom: "0.6rem" }}>
-                  🎞️ DOSSIER SOUVENIRS DE L'AN DERNIER
+                  🎞️ 198 PHOTOS & VIDÉOS DE L'AN DERNIER
                 </span>
                 <h2 style={{ fontSize: "1.35rem", fontWeight: 800, marginBottom: "0.45rem" }}>
                   🥂 Souvenirs • Nouvel An 2026
                 </h2>
-                <p style={{ fontSize: "0.88rem", color: "#cbd5e1", marginBottom: "1.25rem" }}>
-                  Pour se remettre dans l'ambiance et revoir toutes les pépites de l'édition précédente entre potes et avec les enfants :
+                <p style={{ fontSize: "0.86rem", color: "#cbd5e1", marginBottom: "1.1rem" }}>
+                  Retrouvez l'aperçu des photos de l'album 2026 juste en dessous ou ouvrez la galerie complète sur Google Photos :
                 </p>
               </div>
               <a
@@ -2628,18 +2962,82 @@ export default function App() {
                 className="btn btn-secondary"
                 style={{ padding: "0.85rem 1.4rem", fontSize: "0.95rem", borderColor: "#38bdf8", color: "#7dd3fc" }}
               >
-                <Sparkles size={19} /> Revoir l'Album Souvenirs 2026 <ExternalLink size={16} />
+                <Sparkles size={19} /> Ouvrir les 198 photos de l'Album 2026 <ExternalLink size={16} />
               </a>
+            </div>
+          </div>
+
+          {/* LIVE PHOTO PREVIEW GALLERY FROM GOOGLE PHOTOS */}
+          <div className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.9rem" }}>
+              <div>
+                <h3 style={{ fontSize: "1.15rem", fontWeight: 800 }}>
+                  🖼️ Aperçu Direct des Photos de l'Album Google Photos (Édition 2026 • 198 photos)
+                </h3>
+                <p style={{ fontSize: "0.83rem", color: "var(--text-muted)" }}>
+                  Clique sur n'importe quelle miniature pour ouvrir l'album Google Photos complet :
+                </p>
+              </div>
+              <a
+                href={GITE_INFO.googlePhotos2026Url}
+                target="_blank"
+                rel="noreferrer"
+                className="badge badge-sky"
+                style={{ textDecoration: "none", padding: "0.35rem 0.75rem" }}
+              >
+                Voir les 198 photos <ExternalLink size={12} />
+              </a>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(175px, 1fr))",
+                gap: "0.65rem"
+              }}
+            >
+              {GOOGLE_PHOTOS_2026_PREVIEWS.map((imgUrl, idx) => (
+                <a
+                  key={idx}
+                  href={GITE_INFO.googlePhotos2026Url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "block",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    border: "1px solid var(--border-subtle)",
+                    background: "#0f172a",
+                    position: "relative",
+                    aspectRatio: "4 / 3"
+                  }}
+                  title="Ouvrir dans Google Photos"
+                >
+                  <img
+                    src={imgUrl}
+                    alt={`Souvenir Nouvel An #${idx + 1}`}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                      transition: "transform 0.25s ease"
+                    }}
+                  />
+                </a>
+              ))}
             </div>
           </div>
 
           {/* Optional pinned highlights or sub-links */}
           <div className="card">
             <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.4rem" }}>
-              🌟 Autres Liens & Dossiers Photos / Vidéos épinglés
+              🌟 Épingler une Photo coup de cœur ou un Lien Vidéo (2027)
             </h3>
             <p style={{ fontSize: "0.83rem", color: "var(--text-muted)", marginBottom: "0.9rem" }}>
-              Tu peux aussi épingler ici un lien vers une vidéo montage, un Drive ou un sous-album :
+              Colle le lien d'une photo ou d'un sous-album pour l'afficher ici :
             </p>
 
             <form
@@ -2649,7 +3047,7 @@ export default function App() {
               <input
                 type="text"
                 className="input"
-                placeholder="Titre (ex: Montage vidéo, Photos drone...)"
+                placeholder="Titre (ex: Photo de groupe, Montage vidéo...)"
                 value={newPhotoTitle}
                 onChange={(e) => setNewPhotoTitle(e.target.value)}
                 required
@@ -2663,7 +3061,7 @@ export default function App() {
                 required
               />
               <button type="submit" className="btn btn-primary">
-                <Plus size={16} /> Épingler le lien
+                <Plus size={16} /> Épingler
               </button>
             </form>
 
@@ -2965,30 +3363,31 @@ export default function App() {
         {editingMeal && (
           <form onSubmit={saveMealChanges} style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
             <h3 id="mealDialogTitle" style={{ fontSize: "1.15rem", fontWeight: 800 }}>
-              🍽️ Modifier : {editingMeal.day} ({editingMeal.slot})
+              🍽️ Programmer : {editingMeal.day} ({editingMeal.slot})
             </h3>
 
             <div>
               <label style={{ display: "block", fontSize: "0.82rem", marginBottom: "0.25rem" }}>
-                Menu prévu
+                Menu prévu (laisser vide pour libérer le créneau)
               </label>
               <input
                 type="text"
                 className="input"
-                value={editingMeal.menu}
+                placeholder="Ex: Aligot-Saucisse, Raclette, Burgers..."
+                value={editingMeal.menu || ""}
                 onChange={(e) => setEditingMeal({ ...editingMeal, menu: e.target.value })}
-                required
               />
             </div>
 
             <div>
               <label style={{ display: "block", fontSize: "0.82rem", marginBottom: "0.25rem" }}>
-                Qui cuisine / gère ce repas ?
+                Qui s'en occupe / cuisine ce repas ?
               </label>
               <input
                 type="text"
                 className="input"
-                value={editingMeal.cooks}
+                placeholder="Ex: Baptiste & Lulu, Team Dijon..."
+                value={editingMeal.cooks || ""}
                 onChange={(e) => setEditingMeal({ ...editingMeal, cooks: e.target.value })}
               />
             </div>
@@ -3014,7 +3413,7 @@ export default function App() {
                 Annuler
               </button>
               <button type="submit" className="btn btn-primary">
-                Enregistrer le repas
+                Enregistrer le créneau
               </button>
             </div>
           </form>
@@ -3117,3 +3516,4 @@ export default function App() {
     </div>
   );
 }
+
