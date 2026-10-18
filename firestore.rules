@@ -1,0 +1,300 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following data structures for
+// "Nouvel An 2027 au Château des Cœurs - Maleville":
+//
+// Collection: users
+// Document ID: {userId} (matches Firebase Auth UID)
+// Fields:
+//   - uid: string (required/optional, matches userId) - User unique identifier
+//   - firstName: string (required, 1..100 chars) - Member's first name
+//   - email: string (optional, <= 254 chars) - Member's email address
+//   - familyGroup: string (optional, <= 200 chars) - Family / couple group label
+//   - arrivalTime: string (optional, <= 100 chars) - Expected arrival date/time
+//   - transport: string (optional, <= 200 chars) - Transport mode / carpool info
+//   - createdAt: timestamp|string|number (optional, immutable on update)
+//   - updatedAt: timestamp|string|number (optional)
+//
+// Collection: settings
+// Document ID: {docId} (e.g. 'global' or 'links')
+// Fields:
+//   - whatsappUrl: string (optional, <= 2000 chars) - WhatsApp group invite link
+//   - googlePhotosUrl: string (optional, <= 2000 chars) - Shared Google Photos album URL
+//   - tricountUrl: string (optional, <= 2000 chars) - Tricount shared expenses URL
+//   - playlistUrl: string (optional, <= 2000 chars) - Collaborative playlist URL
+//   - updatedBy: string (optional, <= 200 chars) - First name or UID of last editor
+//   - updatedAt: timestamp|string|number (optional)
+//
+// Collection: rooms
+// Document ID: {roomId} (the 9 bedrooms of the gîte)
+// Fields:
+//   - name: string (required, 1..200 chars) - Bedroom name
+//   - type: string (optional, <= 200 chars) - Bed configuration (Double, Twin, etc.)
+//   - capacity: number (optional, 0..50) - Max sleep capacity
+//   - description: string (optional, <= 2000 chars) - Room details & bathroom info
+//   - floor: string (optional, <= 100 chars) - Floor level
+//   - occupants: list (optional, <= 50 items) - Assigned guests / children
+//   - notes: string (optional, <= 2000 chars) - Baby bed or special notes
+//   - updatedAt: timestamp|string|number (optional)
+//
+// Collection: meals
+// Document ID: {mealId} (7-day meal schedule slots)
+// Fields:
+//   - day: string (required, 1..100 chars) - Day identifier or label
+//   - slot: string (required, 1..100 chars) - 'midi' or 'soir'
+//   - menu: string (optional, <= 2000 chars) - Planned dish / menu
+//   - cooks: list|string (optional, <= 50 items or <= 500 chars) - Assigned cooks
+//   - notes: string (optional, <= 2000 chars) - Dietary or prep notes
+//   - updatedAt: timestamp|string|number (optional)
+//
+// Collection: groceries
+// Document ID: {itemId}
+// Fields:
+//   - label: string (required, 1..500 chars) - Item or specialty name
+//   - category: string (optional, <= 100 chars) - Category tag
+//   - broughtBy: string (optional, <= 200 chars) - Person bringing the item
+//   - checked: bool (optional) - Purchased / packed status
+//   - createdBy: string (optional, <= 200 chars) - Creator name or UID
+//   - createdAt: timestamp|string|number (optional)
+//
+// Collection: activities
+// Document ID: {activityId}
+// Fields:
+//   - title: string (required, 1..300 chars) - Activity or outing title
+//   - category: string (optional, <= 100 chars) - Activity category
+//   - day: string (optional, <= 100 chars) - Suggested day
+//   - duration: string (optional, <= 100 chars) - Estimated duration
+//   - description: string (optional, <= 2000 chars) - Details & logistics
+//   - proposedBy: string (optional, <= 200 chars) - Member who proposed it
+//   - votes: list|number (optional, <= 100 items) - Upvotes / interested members
+//   - createdAt: timestamp|string|number (optional)
+//
+// Collection: photos_highlights
+// Document ID: {photoId}
+// Fields:
+//   - title: string (required, 1..300 chars) - Memory / highlight title
+//   - url: string (required, 1..2000 chars) - Link or image URL
+//   - addedBy: string (optional, <= 200 chars) - Member who added it
+//   - createdAt: timestamp|string|number (optional)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated (all authenticated users are trusted group members)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the resource (for user-owned documents)
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Verify UID hasn't been tampered with on create
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    // Ensure uid field is not modified on update
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        !('uid' in resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    // Validate required fields exist
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate that the document does not exceed maximum key count (anti-DoS / schema bound)
+    function hasBoundedKeys(maxKeys) {
+      return request.resource.data.keys().size() <= maxKeys;
+    }
+
+    // Validate required string length
+    function validStringLength(field, minLen, maxLen) {
+      return (field in request.resource.data) &&
+        request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    // Validate optional string (if present and non-null, must be string within length bounds)
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+        request.resource.data[field] == null ||
+        (request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen);
+    }
+
+    // Validate optional list with maximum size bound
+    function isValidOptionalList(field, maxSize) {
+      return !(field in request.resource.data) ||
+        request.resource.data[field] == null ||
+        (request.resource.data[field] is list &&
+         request.resource.data[field].size() <= maxSize);
+    }
+
+    // Validate that immutable fields are not altered during an update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators (Applied to BOTH create and update)
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasBoundedKeys(20) &&
+        isValidOptionalString('uid', 1, 128) &&
+        isValidOptionalString('firstName', 1, 100) &&
+        isValidOptionalString('email', 0, 254) &&
+        isValidOptionalString('familyGroup', 0, 200) &&
+        isValidOptionalString('arrivalTime', 0, 100) &&
+        isValidOptionalString('transport', 0, 200);
+    }
+
+    function isValidSettings(data) {
+      return hasBoundedKeys(20) &&
+        isValidOptionalString('whatsappUrl', 0, 2000) &&
+        isValidOptionalString('googlePhotosUrl', 0, 2000) &&
+        isValidOptionalString('tricountUrl', 0, 2000) &&
+        isValidOptionalString('playlistUrl', 0, 2000) &&
+        isValidOptionalString('updatedBy', 0, 200);
+    }
+
+    function isValidRoom(data) {
+      return hasBoundedKeys(20) &&
+        isValidOptionalString('name', 1, 200) &&
+        isValidOptionalString('type', 0, 200) &&
+        isValidOptionalString('description', 0, 2000) &&
+        isValidOptionalString('floor', 0, 100) &&
+        isValidOptionalString('notes', 0, 2000) &&
+        isValidOptionalList('occupants', 50) &&
+        (!('capacity' in data) || (data.capacity is number && data.capacity >= 0 && data.capacity <= 50));
+    }
+
+    function isValidMeal(data) {
+      return hasBoundedKeys(20) &&
+        isValidOptionalString('day', 1, 100) &&
+        isValidOptionalString('slot', 1, 100) &&
+        isValidOptionalString('menu', 0, 2000) &&
+        isValidOptionalString('notes', 0, 2000) &&
+        (!('cooks' in data) ||
+          (data.cooks is list && data.cooks.size() <= 50) ||
+          (data.cooks is string && data.cooks.size() <= 500));
+    }
+
+    function isValidGrocery(data) {
+      return hasBoundedKeys(20) &&
+        validStringLength('label', 1, 500) &&
+        isValidOptionalString('category', 0, 100) &&
+        isValidOptionalString('broughtBy', 0, 200) &&
+        isValidOptionalString('createdBy', 0, 200) &&
+        (!('checked' in data) || data.checked is bool);
+    }
+
+    function isValidActivity(data) {
+      return hasBoundedKeys(20) &&
+        validStringLength('title', 1, 300) &&
+        isValidOptionalString('category', 0, 100) &&
+        isValidOptionalString('day', 0, 100) &&
+        isValidOptionalString('duration', 0, 100) &&
+        isValidOptionalString('description', 0, 2000) &&
+        isValidOptionalString('proposedBy', 0, 200) &&
+        (!('votes' in data) ||
+          (data.votes is list && data.votes.size() <= 100) ||
+          (data.votes is number && data.votes >= 0 && data.votes <= 1000));
+    }
+
+    function isValidPhotoHighlight(data) {
+      return hasBoundedKeys(20) &&
+        validStringLength('title', 1, 300) &&
+        validStringLength('url', 1, 2000) &&
+        isValidOptionalString('addedBy', 0, 200);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Users: Any authenticated member can read profiles; create/update validated profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        isValidUser(request.resource.data) &&
+        uidUnchanged();
+      allow update: if isAuthenticated() &&
+        isValidUser(request.resource.data) &&
+        uidNotModified() &&
+        areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isOwner(userId);
+    }
+
+    // Shared app links & configuration (WhatsApp, Google Photos, Tricount, Playlist)
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+        isValidSettings(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    // The 9 bedrooms of the gîte
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+        isValidRoom(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    // Meal schedule for the 7 days
+    match /meals/{mealId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+        isValidMeal(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    // Collaborative shopping list & regional specialties
+    match /groceries/{itemId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+        isValidGrocery(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    // Proposed activities & program items
+    match /activities/{activityId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+        isValidActivity(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    // Pinned photo links & memories
+    match /photos_highlights/{photoId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+        isValidPhotoHighlight(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    // Default deny on any unknown collection or document path
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

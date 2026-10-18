@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+*credentials*.json
+serviceAccount*.json
+*.pem
+id_rsa*
+.firebase
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
